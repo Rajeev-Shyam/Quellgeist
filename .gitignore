@@ -26,3 +26,7 @@ htmlcov/
 
 # Runtime demo signal log
 demo/incident_logs.jsonl
+
+# Runtime chaos artifacts
+demo/deploy_log.json
+demo/.bad_deploy

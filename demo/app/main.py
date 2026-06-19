@@ -19,12 +19,17 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
 
+from demo.app import auth
+
 # --- structured-log sink ----------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 LOG_PATH = Path(os.getenv("QG_LOG_PATH", _REPO_ROOT / "demo" / "incident_logs.jsonl"))
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-_log_file = LOG_PATH.open("a", buffering=1)  # line-buffered append
+LOG_PATH.write_text("")  # fresh log each app session
+_log_file = LOG_PATH.open(
+    "a", buffering=1
+)  # append (O_APPEND): safe even if reset truncates mid-session
 
 _id_lock = threading.Lock()
 _next_id = 0
@@ -103,9 +108,10 @@ def health():
 
 
 @app.get("/login")  # GET for curl-ability; method is irrelevant to diagnosis
-def login():
+def login(request: Request):
+    result = auth.verify_token(request.headers.get("authorization"))
     log.info("login ok", route="/login", status=200)
-    return {"token": "demo-token"}
+    return {"token": "demo-token", "user": result["user"]}
 
 
 @app.get("/data")
