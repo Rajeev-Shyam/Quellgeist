@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Envs (verifier key lives here in Wave 2 — never commit)
+.venv/
+venv/
+.env
+.env.*
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+
+# Logs / local demo artifacts
+*.log
