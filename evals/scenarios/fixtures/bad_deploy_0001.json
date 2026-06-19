@@ -3,17 +3,21 @@
   "failure_class": "bad_deploy",
   "now": "2026-06-18T10:15:00Z",
   "logs": [
-    {"ts": "2026-06-18T09:55:01Z", "level": "INFO",  "route": "/login", "status": 200, "msg": "login ok"},
-    {"ts": "2026-06-18T10:01:30Z", "level": "INFO",  "route": "/login", "status": 200, "msg": "login ok"},
-    {"ts": "2026-06-18T10:02:12Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"},
-    {"ts": "2026-06-18T10:03:05Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"},
-    {"ts": "2026-06-18T10:07:44Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"},
-    {"ts": "2026-06-18T10:08:10Z", "level": "INFO",  "route": "/data",  "status": 200, "msg": "data served"}
+    {"id": 0, "ts": "2026-06-18T09:55:01Z", "level": "INFO",  "route": "/login", "status": 200, "msg": "login ok"},
+    {"id": 1, "ts": "2026-06-18T10:01:30Z", "level": "INFO",  "route": "/login", "status": 200, "msg": "login ok"},
+    {"id": 2, "ts": "2026-06-18T10:02:12Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"},
+    {"id": 3, "ts": "2026-06-18T10:03:05Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"},
+    {"id": 4, "ts": "2026-06-18T10:07:44Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"},
+    {"id": 5, "ts": "2026-06-18T10:08:10Z", "level": "INFO",  "route": "/data",  "status": 200, "msg": "data served"}
   ],
   "commits": [
     {"sha": "a1b2c3d", "ts": "2026-06-18T10:01:50Z", "msg": "deploy: refactor token parsing", "files": ["src/app/auth.py"]},
     {"sha": "9f8e7d6", "ts": "2026-06-17T16:20:00Z", "msg": "docs: update README", "files": ["README.md"]}
   ],
   "gold_cause": "Bad deploy a1b2c3d (10:01:50Z) refactored auth.py and introduced a NoneType error in verify_token; /login 500s begin ~20s later at 10:02:12Z.",
-  "gold_evidence": ["log:2026-06-18T10:02:12Z /login 500", "commit:a1b2c3d src/app/auth.py"]
+  "gold_evidence": ["log:2026-06-18T10:02:12Z /login 500", "commit:a1b2c3d src/app/auth.py"],
+  "gold_evidence_refs": [
+    {"type": "log", "id": 2},
+    {"type": "commit", "sha": "a1b2c3d"}
+  ]
 }
