@@ -15,6 +15,7 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0006 | Stack & surfaces: Python + FastAPI toy demo + CLI core | Accepted (provisional) | Wave 1 |
 | DR-0007 | Model selection: Qwen3.5-4B default, Qwen3-4B fallback, Qwen3-8B bigger candidate | Superseded by DR-0008 | — |
 | DR-0008 | Wave 0 gate outcome: Qwen3-4B confirmed as default reasoner | Accepted (firm) | Wave 4 results |
+| DR-0009 | Evidence as structured handles + deterministic handle-lookup fabrication check | Accepted (provisional) | Wave 2 baseline |
 
 ---
 
@@ -255,3 +256,33 @@ Default reasoner for v1 = **Qwen3-4B** (`unsloth/Qwen3-4B`, 4-bit QLoRA via `Fas
 - Qwen3.5 is a VLM — Unsloth loads it via `FastVisionModel`, and its chat template needs list-of-parts content, not bare strings. Recorded so it isn't rediscovered.
 - Spike artifacts: `bad_deploy_0001.json` (graduates to `evals/scenarios/fixtures/`); findings → `docs/case-studies/wave0-findings.md`.
 - Related: DR-0002 (superseded by DR-0007), DR-0007 (superseded here), DR-0003 (reliability/verifier — unchanged), DR-0004 (fine-tune compute — note: in the office/browser context, training is free Colab/Kaggle, not local), DR-0006 (stack).
+
+# DR-0009: Evidence citation — structured handles + deterministic handle-lookup check
+
+**Status:** Accepted (provisional) · **Date:** 2026-06-19 · **Decided by:** Rajeev (with Claude as thinking partner)
+**Refines:** DR-0003 (reliability) · **Revisit at:** Wave 2 baseline
+
+## Context
+Wave 0 (DR-0008) found that both candidate models cite evidence as **paraphrases** of the real log/commit rows, not verbatim strings. The headline guarantee — *zero confidently-stated fabricated causes* — rests on a **deterministic** fabrication check, so the check cannot depend on matching the model's free text (a pure exact-string compare would flag correct evidence as fabricated).
+
+## Decision
+The agent cites evidence **only as structured handles** — a log row's source-stable `id` or a commit `sha` (a metric id is added in Wave 3) — in the diagnosis object's `evidence` field. Each handle may carry a display-only `note`; the postmortem renders the `note`s plus a per-diagnosis `summary`. The deterministic fabrication check becomes a set-membership lookup: every cited handle must resolve to a real signal. *Existence* is the deterministic check; *whether the evidence supports the claim* is left to the verifier-model pass; *overall quality* to the LLM-judge. Contract lives in `src/quellgeist/agent/schema.py`; check in `evals/fabrication_check.py` (built in Wave 2).
+
+## Alternatives Considered
+- **Free-text evidence + a normalizing/fuzzy checker** — rejected: puts a parser or similarity threshold inside the hard guarantee → false positives (real evidence flagged) or false negatives (fabrication "close enough" to pass); degrades the claim from *deterministic* to *mostly*; and is a retrofit treadmill as new phrasings appear.
+- **A separate top-level `description` field (earlier sketch)** — superseded by per-handle `note` + `summary`: the gloss travels with the thing it describes, and the renderer and the check read different fields of the same object.
+
+## Consequences
+**Good:** the fabrication check is ~10 lines with no thresholds and is reviewer-legible; existence / support / quality are cleanly separated across the three reliability layers; adding `MetricRef` in Wave 3 is additive (discriminated union on `type`).
+**Trade-offs:** the model must emit exact ids/shas — a prompt constraint and a possible source of schema-violation retries on a 4B; the diagnosis object carries both machine handles and human notes.
+**Watch out for:**
+- **`id` must be source-stable, not positional.** A log row's `id` is assigned at ingest (log-line number / monotonic counter), **not** the index within a filtered `query_logs` result — otherwise a handle resolves to different rows under different filters and the check compares against a moving target. (In `bad_deploy_0001` ids equal positions only because the fixture is unfiltered.)
+- **id-citation fidelity on a 4B is unproven.** Wave 0 only showed paraphrasing when the model was *free*; it never tested copying ids under constraint. Measure citation fidelity early in Wave 1; do not assume reliable id-copying until measured.
+- **Abstention (`abstained` / `abstention_reason`) is in the schema but still unexercised** until Wave 2.
+- **When metrics land (Wave 3), extend `assert_no_fabrication` to handle `MetricRef`** — as currently written it fails *open* on unknown ref types; prefer fail-closed.
+- **Ranking:** the `hypotheses` list is pre-sorted best-first; `confidence` is the model's advisory value, not a guarantee of monotonic order — sort on consume if you rely on it.
+
+## Notes
+- Resolves the Wave 0 carry-forward "fabrication check needs fuzzy/structured matching" by choosing **structured**.
+- `bad_deploy_0001.json` gains per-row `id`s and a `gold_evidence_refs` field under this decision.
+- Related: DR-0003 (reliability — refined here), DR-0008 (the Wave 0 finding that motivated this), DR-0006 (stack).
