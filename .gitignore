@@ -23,3 +23,6 @@ htmlcov/
 
 # Logs / local demo artifacts
 *.log
+
+# Runtime demo signal log
+demo/incident_logs.jsonl
