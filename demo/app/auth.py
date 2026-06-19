@@ -25,9 +25,8 @@ def _parse_claims(token: str | None) -> dict:
 
 def _parse_claims_refactored(token: str | None):
     # Simulated deploy a1b2c3d: refactor returns None (not {}) for a missing token.
-    if not token:
-        return None
-    return {"sub": "demo-user"}
+    # unconditionally, so EVERY login hits the NoneType subscript.
+    return None
 
 
 def verify_token(token: str | None) -> dict:
