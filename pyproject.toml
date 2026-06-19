@@ -43,6 +43,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]   # ruff lints (+ import sort); black formats
+ignore = ["E501"]
 
 [tool.black]
 line-length = 88
