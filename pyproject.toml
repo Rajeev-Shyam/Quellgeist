@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quellgeist"
+version = "0.0.1"
+description = "Model-agnostic, MCP-powered AI agent for first-line production-incident triage."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Rajeev Shyam Kumar" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "mcp",
+    "litellm",
+    "pydantic>=2",
+    "prometheus-client",
+    "structlog",
+]
+
+[project.scripts]
+# CLI lands in Task 8; declared now so packaging stays stable. `quellgeist` will
+# ImportError until quellgeist/cli.py exists — that's expected this wave.
+quellgeist = "quellgeist.cli:main"
+
+[dependency-groups]
+dev = ["pytest", "ruff", "black", "pre-commit"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quellgeist"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]   # ruff lints (+ import sort); black formats
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
