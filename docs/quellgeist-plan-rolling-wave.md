@@ -67,11 +67,12 @@ quellgeist/
 **Objective:** one failure class (bad deploy) working through the *entire* pipeline — demo app → break it → agent reads logs + git via MCP → produces a postmortem — plus an eval harness skeleton in CI. Prove the whole spine on one case before adding breadth.
 
 ### Task 1: Repo scaffold
-**Files:** Create `pyproject.toml`, `README.md`, `LICENSE`, `src/quellgeist/__init__.py`
-- [ ] Initialise repo, Python 3.12, `pyproject.toml` (deps: fastapi, uvicorn, mcp, litellm, anthropic, pytest, prometheus-client, structlog or python-json-logger).
+**Files:** Create `pyproject.toml`, `README.md`, `LICENSE`, `src/quellgeist/__init__.py`, `src/quellgeist/agent/schema.py`
+- [ ] Initialise repo, Python 3.12, `pyproject.toml` (deps: fastapi, uvicorn, mcp, litellm, anthropic, pydantic, pytest, prometheus-client, structlog or python-json-logger). *(pydantic ships with fastapi but list it explicitly.)*
+- [ ] Add `schema.py` with the shared diagnosis contract — `LogRef`/`CommitRef` (+ `MetricRef` stub for Wave 3), `EvidenceRef` discriminated union, `Hypothesis`, `Diagnosis` (with `abstained`/`abstention_reason`). See DR-0009. Tasks 4–9 import from here.
 - [ ] Add MIT `LICENSE` with your name; stub `README.md` (one-line description + "WIP").
 - [ ] Set up `pre-commit` (ruff + black) and a `.gitignore`.
-- [ ] Commit: `chore: scaffold repo, license, tooling`.
+- [ ] Commit: `chore: scaffold repo, license, tooling, diagnosis schema`.
 
 ### Task 2: Toy FastAPI demo app
 **Files:** Create `demo/app/main.py`, `demo/app/__init__.py`
@@ -89,13 +90,11 @@ quellgeist/
 
 ### Task 4: Custom logs MCP server
 **Files:** Create `src/quellgeist/servers/logs_mcp.py`, `tests/servers/test_logs_mcp.py`
-- [ ] Implement an MCP server (stdio transport) exposing one tool, e.g. `query_logs(since, level, route)` returning matching structured-log entries from the demo app's log file.
-- [ ] **Step: write the failing test** — `test_query_logs_filters_by_level` feeds known log lines and asserts only `ERROR` rows return.
-- [ ] **Step: run it, confirm fail.**
-- [ ] **Step: implement** the parser + filter to pass.
-- [ ] **Step: run, confirm pass.**
-- [ ] Write tight tool descriptions (the model relies on them — Wave 2 will test description quality).
-- [ ] Commit: `feat(servers): structured-log MCP server with query_logs`.
+- [ ] Implement an MCP server (stdio transport) exposing `query_logs(since, level, route)` returning matching structured-log entries, **each with its source-stable `id`** (log-line number / ingest counter — NOT the index within the filtered result, so an evidence handle resolves the same regardless of query). This `id` is what `LogRef` cites (DR-0009).
+- [ ] **Step: write the failing test** — `test_query_logs_filters_by_level` feeds known log lines and asserts only `ERROR` rows return, **each carrying its original source `id`**.
+- [ ] **Step: run it, confirm fail → implement parser + filter → confirm pass.**
+- [ ] Write tight tool descriptions (the model relies on them — Wave 2 tests description quality).
+- [ ] Commit: `feat(servers): structured-log MCP server with query_logs (stable ids)`.
 
 ### Task 5: Wire GitHub MCP (reuse)
 **Files:** Create `src/quellgeist/agent/providers.py` (MCP client config)
@@ -105,18 +104,19 @@ quellgeist/
 
 ### Task 6: Provider abstraction + minimal agent loop (hosted model first)
 **Files:** Create `src/quellgeist/agent/loop.py`, `src/quellgeist/agent/prompts.py`, `tests/agent/test_loop.py`
-- [ ] `providers.py`: LiteLLM wrapper so the model is swappable by config (start with a hosted model while iterating; Ollama/local comes in Wave 4).
-- [ ] `loop.py`: a legible decide→call→observe→repeat loop with a step cap; tools = `query_logs` + git history.
-- [ ] `prompts.py`: the diagnosis system prompt — instruct ranked hypotheses, **each with cited evidence**, and explicit "insufficient evidence" when unsupported.
-- [ ] **Step: write the failing test** — `test_loop_calls_logs_then_diagnoses` with a mocked provider asserts the loop calls `query_logs` and returns a structured result object.
+- [ ] `providers.py`: LiteLLM wrapper so the model is swappable by config (hosted while iterating; Ollama/local in Wave 4).
+- [ ] `loop.py`: a legible decide→call→observe→repeat loop with a step cap; tools = `query_logs` + git history; returns a `Diagnosis` (from `schema.py`).
+- [ ] `prompts.py`: the diagnosis system prompt — ranked hypotheses, each citing evidence **only by the `id`/`sha` returned by the tools** (human explanation goes in each handle's `note`, never paraphrase the identifier); if the signals don't support a confident cause, **set `abstained=true` with a reason instead of guessing**.
+- [ ] **Step: write the failing test** — `test_loop_calls_logs_then_diagnoses` with a mocked provider asserts the loop calls `query_logs` and returns a `Diagnosis` whose evidence are resolvable handles.
+- [ ] **Step (measurement, per DR-0009):** log how often the model emits a malformed/nonexistent id on the fixture — early read on id-citation fidelity on a 4B.
 - [ ] **Step: fail → implement → pass.**
-- [ ] Acceptance: against the broken demo app, the loop returns a structured diagnosis object naming the deploy as the likely cause with cited log + commit evidence.
-- [ ] Commit: `feat(agent): evidence-gathering loop producing a structured diagnosis`.
+- [ ] Acceptance: against the broken demo app, the loop returns a `Diagnosis` naming the deploy as cause #1 with evidence handles resolving to the real log row + commit.
+- [ ] Commit: `feat(agent): evidence-gathering loop returning a structured Diagnosis`.
 
 ### Task 7: Postmortem output
 **Files:** Create `src/quellgeist/output/postmortem.py`, `tests/output/test_postmortem.py`
-- [ ] Render the diagnosis object into a templated postmortem (summary, short timeline, ranked root-cause hypotheses + evidence, suggested next actions). Output to **stdout and an HTML/Markdown file** — this file render is the v1 "UI" (no live web app).
-- [ ] **Step: failing test** — `test_postmortem_includes_evidence_refs` asserts each hypothesis line carries its evidence references.
+- [ ] Render a `Diagnosis` into a templated postmortem (summary, short timeline, ranked hypotheses, suggested actions). For each hypothesis, render its evidence as the handle (`log #id` / `commit sha`) **plus its `note`** so the citation is both human-readable and traceable. Handle the `abstained=true` case explicitly ("insufficient evidence"). Output to **stdout and an HTML/Markdown file**.
+- [ ] **Step: failing test** — `test_postmortem_includes_evidence_refs` asserts each hypothesis line carries its evidence handle(s).
 - [ ] **Step: fail → implement → pass.**
 - [ ] Commit: `feat(output): templated postmortem renderer`.
 
@@ -128,8 +128,8 @@ quellgeist/
 
 ### Task 9: Eval harness skeleton + first scenario + CI
 **Files:** Create `evals/scenarios/generator.py` (stub), `evals/run_evals.py`, `evals/judge.py` (stub), `.github/workflows/evals.yml`, `tests/evals/test_runner.py`
-- [ ] Define a scenario schema (injected failure → expected root cause label + the evidence that should exist). Hand-author **one** bad-deploy scenario as a fixture.
-- [ ] `run_evals.py`: spin up the demo app, inject the scenario, run the agent, capture the diagnosis. Judge stub = exact/keyword match for now (real LLM-judge in Wave 2).
+- [ ] Define a scenario schema (injected failure → expected root-cause label + **`gold_evidence_refs`** = the handles a correct diagnosis must cite). Use `bad_deploy_0001.json` as the first fixture.
+- [ ] `run_evals.py`: spin up the demo app, inject the scenario, run the agent, capture the `Diagnosis`. Judge stub = exact/keyword match for now (real LLM-judge in Wave 2). *(The deterministic handle-lookup fabrication check using `gold_evidence_refs` lands in Wave 2 / `evals/fabrication_check.py`.)*
 - [ ] **Step: failing test** for the runner on the single fixture → implement → pass.
 - [ ] `.github/workflows/evals.yml`: run the eval(s) on every push; print pass/fail.
 - [ ] Commit: `feat(evals): harness skeleton + first bad-deploy scenario + CI`.
