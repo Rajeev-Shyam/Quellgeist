@@ -1614,7 +1614,7 @@ dev = [
 requires-dist = [
     { name = "fastapi" },
     { name = "litellm" },
-    { name = "mcp" },
+    { name = "mcp", specifier = "==1.28.0" },
     { name = "prometheus-client" },
     { name = "pydantic", specifier = ">=2" },
     { name = "structlog" },

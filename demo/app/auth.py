@@ -2,8 +2,9 @@
 
 Healthy by default. When a bad deploy is injected (demo/chaos/bad_deploy.py drops
 the demo/.bad_deploy marker), verify_token takes a refactored path that lost its
-None-guard: a missing token makes claims None and claims["sub"] raises TypeError —
-the regression the agent must trace back to the deploy that touched this file.
+None-guard: claims is None for every request, so claims["sub"] raises TypeError on
+every login — the regression the agent must trace back to the deploy that touched
+this file.
 """
 
 from __future__ import annotations
@@ -23,9 +24,10 @@ def _parse_claims(token: str | None) -> dict:
     return {"sub": "demo-user"}
 
 
-def _parse_claims_refactored(token: str | None):
-    # Simulated deploy a1b2c3d: refactor returns None (not {}) for a missing token.
-    # unconditionally, so EVERY login hits the NoneType subscript.
+def _parse_claims_refactored(token: str | None) -> None:
+    # Simulated deploy a1b2c3d: the refactor dropped the None-guard and now returns
+    # None unconditionally (token or not), so EVERY login hits the NoneType
+    # subscript in verify_token while bad-deployed.
     return None
 
 
