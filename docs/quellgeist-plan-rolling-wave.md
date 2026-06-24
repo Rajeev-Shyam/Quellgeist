@@ -19,29 +19,47 @@ This is a **Rolling Wave** plan, by deliberate choice — it is meant to be upda
 - **Cut-first item under time pressure:** the resolution-verification loop (Wave 6). Reliability (Waves 1–2) is non-negotiable.
 - Deviation from the standard plan format is intentional: greenfield + rolling-wave means future-wave code is not pre-written (it would be speculative). Wave 0–1 are execution-ready; later waves get that treatment when reached.
 
-**Proposed repo structure (locked in Wave 1):**
+**Repo structure (✓ = exists after Wave 1; otherwise target wave):**
 ```
 quellgeist/
-  pyproject.toml · README.md · LICENSE (MIT)
+  pyproject.toml · README.md · LICENSE (MIT)         # ✓ (README still WIP)
+  # pyproject has [tool.pytest.ini_options] pythonpath = ["."]  ✓ (so top-level evals/ imports in tests)
   src/quellgeist/
-    agent/         loop.py · prompts.py · providers.py · verifier.py
-    servers/       logs_mcp.py · metrics_mcp.py        # custom MCP servers
-    output/        postmortem.py
-    cli.py
+    agent/
+      schema.py        # ✓ Diagnosis contract (DR-0009)
+      providers.py     # ✓ LiteLLM wrapper + retry/backoff
+      loop.py          # ✓ JSON-action ReAct loop -> LoopResult
+      prompts.py       # ✓
+      verifier.py      # Wave 2
+    servers/
+      logs_mcp.py      # ✓ query_logs (stable ids)
+      commits_mcp.py   # ✓ get_recent_commits over deploy_log.json
+      metrics_mcp.py   # Wave 3
+    output/
+      postmortem.py    # ✓ Markdown renderer (HTML deferred)
+    cli.py             # ✓ `quellgeist diagnose`
   demo/
-    app/           FastAPI toy service
-    chaos/         failure injection + reset scripts
-    docker-compose.yml
+    app/               # ✓ FastAPI toy service (structlog JSONL)
+    chaos/             # ✓ bad_deploy.py · reset.py
+    docker-compose.yml # (if created in Tasks 1–3)
   evals/
-    scenarios/     generator.py · fixtures/ · holdout/  # NOTE: holdout ≠ generator distribution
-    spikes/        wave0_spike.ipynb                     # Wave 0 throwaway notebook (provenance)
-    judge.py · fabrication_check.py · run_evals.py
-  .github/workflows/evals.yml
-  docs/
-    decisions/     ADRs · README.md (index)
-    plans/         this file
-    case-studies/
+    scenarios/
+      generator.py                  # ✓ Scenario schema + loader (parameterised gen = Wave 3)
+      fixtures/bad_deploy_0001.json # ✓ first scenario
+      holdout/                      # Wave 4  (NOTE: holdout ≠ generator distribution)
+    spikes/wave0_spike.ipynb        # Wave 0 throwaway (provenance)
+    judge.py             # ✓ STUB (keyword/handle match; real LLM-judge = Wave 2)
+    fabrication_check.py # Wave 2 (deterministic handle-lookup vs FULL real-signal set)
+    run_evals.py         # ✓ fixture-based harness (real-model eval job = Wave 2, key-gated)
+  tests/
+    servers/ · agent/ · output/ · evals/ · test_cli.py   # ✓ 37 tests
+  .github/workflows/evals.yml   # ✓ keyless deterministic gate (lint + pytest)
+  docs/                         # flat; combined single-file ADR log (not per-file ADRs)
+    quellgeist-adr-log.md       # the ADR log
+    quellgeist-plan-rolling-wave.md  # this file
+    case-studies/               # wave0-findings.md, etc.
 ```
+(Each package dir has an `__init__.py`.)
 
 ---
 
@@ -68,73 +86,71 @@ quellgeist/
 
 ### Task 1: Repo scaffold
 **Files:** Create `pyproject.toml`, `README.md`, `LICENSE`, `src/quellgeist/__init__.py`, `src/quellgeist/agent/schema.py`
-- [ ] Initialise repo, Python 3.12, `pyproject.toml` (deps: fastapi, uvicorn, mcp, litellm, anthropic, pydantic, pytest, prometheus-client, structlog or python-json-logger). *(pydantic ships with fastapi but list it explicitly.)*
-- [ ] Add `schema.py` with the shared diagnosis contract — `LogRef`/`CommitRef` (+ `MetricRef` stub for Wave 3), `EvidenceRef` discriminated union, `Hypothesis`, `Diagnosis` (with `abstained`/`abstention_reason`). See DR-0009. Tasks 4–9 import from here.
-- [ ] Add MIT `LICENSE` with your name; stub `README.md` (one-line description + "WIP").
-- [ ] Set up `pre-commit` (ruff + black) and a `.gitignore`.
-- [ ] Commit: `chore: scaffold repo, license, tooling, diagnosis schema`.
+- [x] Initialise repo, Python 3.12, `pyproject.toml` (deps: fastapi, uvicorn, mcp, litellm, anthropic, pydantic, pytest, prometheus-client, structlog or python-json-logger). *(pydantic ships with fastapi but list it explicitly.)*
+- [x] Add `schema.py` with the shared diagnosis contract — `LogRef`/`CommitRef` (+ `MetricRef` stub for Wave 3), `EvidenceRef` discriminated union, `Hypothesis`, `Diagnosis` (with `abstained`/`abstention_reason`). See DR-0009. Tasks 4–9 import from here.
+- [x] Add MIT `LICENSE` with your name; stub `README.md` (one-line description + "WIP").
+- [x] Set up `pre-commit` (ruff + black) and a `.gitignore`.
+- [x] Commit: `chore: scaffold repo, license, tooling, diagnosis schema`.
 
 ### Task 2: Toy FastAPI demo app
 **Files:** Create `demo/app/main.py`, `demo/app/__init__.py`
-- [ ] Build a minimal FastAPI service with 2–3 endpoints (e.g. `/health`, `/login`, `/data`) that emit **structured JSON logs** per request (timestamp, level, route, status, message).
-- [ ] Add a `/metrics` endpoint exposing Prometheus-style counters (request count, error count, in-flight) — stub now, used properly in Wave 3.
-- [ ] Acceptance: `uvicorn demo.app.main:app` runs; hitting endpoints produces JSON log lines; `/metrics` returns text.
-- [ ] Commit: `feat(demo): toy FastAPI app with structured JSON logs`.
+- [x] Build a minimal FastAPI service with 2–3 endpoints (e.g. `/health`, `/login`, `/data`) that emit **structured JSON logs** per request (timestamp, level, route, status, message).
+- [x] Add a `/metrics` endpoint exposing Prometheus-style counters (request count, error count, in-flight) — stub now, used properly in Wave 3.
+- [x] Acceptance: `uvicorn demo.app.main:app` runs; hitting endpoints produces JSON log lines; `/metrics` returns text.
+- [x] Commit: `feat(demo): toy FastAPI app with structured JSON logs`.
 
 ### Task 3: Chaos — bad-deploy injection + reset
 **Files:** Create `demo/chaos/bad_deploy.py`, `demo/chaos/reset.py`
-- [ ] `bad_deploy.py`: introduce a controlled regression (e.g. a code path on `/login` that throws after a "deploy"), and write a fake git commit/deploy marker (commit to the demo app's own git history or a `deploy_log.json`) timestamped at the break.
-- [ ] `reset.py`: revert the regression and clear the marker.
-- [ ] Acceptance: run `bad_deploy.py` → `/login` errors + a deploy marker exists with a timestamp just before the first error; `reset.py` restores green.
-- [ ] Commit: `feat(chaos): bad-deploy injection and reset`.
+- [x] `bad_deploy.py`: introduce a controlled regression (e.g. a code path on `/login` that throws after a "deploy"), and write a fake git commit/deploy marker (commit to the demo app's own git history or a `deploy_log.json`) timestamped at the break.
+- [x] `reset.py`: revert the regression and clear the marker.
+- [x] Acceptance: run `bad_deploy.py` → `/login` errors + a deploy marker exists with a timestamp just before the first error; `reset.py` restores green.
+- [x] Commit: `feat(chaos): bad-deploy injection and reset`.
 
 ### Task 4: Custom logs MCP server
 **Files:** Create `src/quellgeist/servers/logs_mcp.py`, `tests/servers/test_logs_mcp.py`
-- [ ] Implement an MCP server (stdio transport) exposing `query_logs(since, level, route)` returning matching structured-log entries, **each with its source-stable `id`** (log-line number / ingest counter — NOT the index within the filtered result, so an evidence handle resolves the same regardless of query). This `id` is what `LogRef` cites (DR-0009).
-- [ ] **Step: write the failing test** — `test_query_logs_filters_by_level` feeds known log lines and asserts only `ERROR` rows return, **each carrying its original source `id`**.
-- [ ] **Step: run it, confirm fail → implement parser + filter → confirm pass.**
-- [ ] Write tight tool descriptions (the model relies on them — Wave 2 tests description quality).
-- [ ] Commit: `feat(servers): structured-log MCP server with query_logs (stable ids)`.
+- [x] Implement an MCP server (stdio transport) exposing `query_logs(since, level, route)` returning matching structured-log entries, **each with its source-stable `id`** (log-line number / ingest counter — NOT the index within the filtered result, so an evidence handle resolves the same regardless of query). This `id` is what `LogRef` cites (DR-0009).
+- [x] **Step: write the failing test** — `test_query_logs_filters_by_level` feeds known log lines and asserts only `ERROR` rows return, **each carrying its original source `id`**.
+- [x] **Step: run it, confirm fail → implement parser + filter → confirm pass.**
+- [x] Write tight tool descriptions (the model relies on them — Wave 2 tests description quality).
+- [x] Commit: `feat(servers): structured-log MCP server with query_logs (stable ids)`.
 
-### Task 5: Wire GitHub MCP (reuse)
-**Files:** Create `src/quellgeist/agent/providers.py` (MCP client config)
-- [ ] Wire the existing GitHub MCP server (read-only) so the agent can fetch recent commits/diffs; for the demo, point it at the demo app's repo (or read the local `deploy_log.json` if simpler for v1).
-- [ ] Acceptance: a manual call lists the last N commits including the bad-deploy marker.
-- [ ] Commit: `feat(agent): connect GitHub MCP (read-only) for deploy/commit history`.
+### Task 5: Commits MCP server  ✅ DONE  *(was: "Wire GitHub MCP (reuse)")*
+**Files created:** `src/quellgeist/servers/commits_mcp.py`, `tests/servers/test_commits_mcp.py` *(not `providers.py`)*
+- [x] Custom thin `get_recent_commits(since, limit)` over `demo/deploy_log.json` (JSON array), newest-first, `sha` verbatim. **Real GitHub MCP rejected for v1** (token/network/offline/CI) — see DR-0011.
+- [x] 6 tests green (newest-first, since, limit, sha-verbatim, missing-file→[], non-array→raises).
+- [x] Commit: `feat(servers): commits MCP server with get_recent_commits over deploy_log.json`
+- ⚠ Deviation: MCP *client* wiring (loop ↔ servers over stdio) deferred to Task 6, then deferred entirely — the loop calls tools **in-process** (DR-0010).
 
-### Task 6: Provider abstraction + minimal agent loop (hosted model first)
-**Files:** Create `src/quellgeist/agent/loop.py`, `src/quellgeist/agent/prompts.py`, `tests/agent/test_loop.py`
-- [ ] `providers.py`: LiteLLM wrapper so the model is swappable by config (hosted while iterating; Ollama/local in Wave 4).
-- [ ] `loop.py`: a legible decide→call→observe→repeat loop with a step cap; tools = `query_logs` + git history; returns a `Diagnosis` (from `schema.py`).
-- [ ] `prompts.py`: the diagnosis system prompt — ranked hypotheses, each citing evidence **only by the `id`/`sha` returned by the tools** (human explanation goes in each handle's `note`, never paraphrase the identifier); if the signals don't support a confident cause, **set `abstained=true` with a reason instead of guessing**.
-- [ ] **Step: write the failing test** — `test_loop_calls_logs_then_diagnoses` with a mocked provider asserts the loop calls `query_logs` and returns a `Diagnosis` whose evidence are resolvable handles.
-- [ ] **Step (measurement, per DR-0009):** log how often the model emits a malformed/nonexistent id on the fixture — early read on id-citation fidelity on a 4B.
-- [ ] **Step: fail → implement → pass.**
-- [ ] Acceptance: against the broken demo app, the loop returns a `Diagnosis` naming the deploy as cause #1 with evidence handles resolving to the real log row + commit.
-- [ ] Commit: `feat(agent): evidence-gathering loop returning a structured Diagnosis`.
+### Task 6: Provider abstraction + agent loop  ✅ DONE
+**Files created:** `agent/providers.py`, `agent/loop.py`, `agent/prompts.py`, `tests/agent/test_loop.py`, `tests/agent/test_providers.py`
+- [x] `providers.py`: LiteLLM wrapper, swappable via `QG_MODEL`; lazy `litellm` import; **explicit retry/backoff** (503/429/500/timeout) + 3 retry tests.
+- [x] `loop.py`: **JSON-action ReAct loop** (NOT native function-calling), step cap, returns **`LoopResult`** (Diagnosis + fidelity trace), graceful abstention on exhaustion; tools `query_logs` + `get_recent_commits` wired **in-process**.
+- [x] `prompts.py`: cite by `id`/`sha` only, abstain over guessing; forces evidence `type`.
+- [x] Failing test → `test_loop_calls_logs_then_diagnoses` (mocked provider). 6 loop tests.
+- [x] DR-0009 measurement = `cited_but_unseen_handles()` (run-scoped proxy; real check = Wave 2).
+- [x] Commit: `feat(agent): evidence-gathering loop returning a structured Diagnosis` *(amended to fold in retry)*
+- ⚠ Acceptance + the actual id-fidelity number **NOT yet measured** — blocked by Gemini limit:0/503; pending the Qwen-at-home run.
 
-### Task 7: Postmortem output
-**Files:** Create `src/quellgeist/output/postmortem.py`, `tests/output/test_postmortem.py`
-- [ ] Render a `Diagnosis` into a templated postmortem (summary, short timeline, ranked hypotheses, suggested actions). For each hypothesis, render its evidence as the handle (`log #id` / `commit sha`) **plus its `note`** so the citation is both human-readable and traceable. Handle the `abstained=true` case explicitly ("insufficient evidence"). Output to **stdout and an HTML/Markdown file**.
-- [ ] **Step: failing test** — `test_postmortem_includes_evidence_refs` asserts each hypothesis line carries its evidence handle(s).
-- [ ] **Step: fail → implement → pass.**
-- [ ] Commit: `feat(output): templated postmortem renderer`.
+### Task 7: Postmortem output  ✅ DONE
+- [x] Markdown renderer (HTML deferred); evidence as handle + `note`; abstention rendered explicitly. **No timeline section** (Diagnosis carries handles, not timestamps — deferred).
+- [x] Failing test → `test_postmortem_includes_evidence_refs`. 6 tests.
+- [x] Commit: `feat(output): templated postmortem renderer`
 
-### Task 8: CLI entry point
-**Files:** Create `src/quellgeist/cli.py`
-- [ ] `quellgeist diagnose` runs the loop against the configured demo app and prints the postmortem.
-- [ ] Acceptance: `bad_deploy.py` then `quellgeist diagnose` prints a postmortem fingering the deploy; `reset.py` then `diagnose` reports healthy / insufficient-evidence.
-- [ ] Commit: `feat(cli): quellgeist diagnose command`.
+### Task 8: CLI entry point  ✅ DONE
+- [x] `quellgeist diagnose` (argparse; `--out/--model/--max-steps/--title/--show-trace`); stdout = postmortem, stderr = diagnostics; provider failure → clean exit 1. Invoke via `uv run quellgeist diagnose`.
+- [x] 4 offline CLI tests (scripted fake provider).
+- [x] Commit: `feat(cli): quellgeist diagnose command`
+- ⚠ Live acceptance (deploy → diagnose → postmortem; reset → insufficient-evidence) **NOT demonstrated** — model-gated.
 
-### Task 9: Eval harness skeleton + first scenario + CI
-**Files:** Create `evals/scenarios/generator.py` (stub), `evals/run_evals.py`, `evals/judge.py` (stub), `.github/workflows/evals.yml`, `tests/evals/test_runner.py`
-- [ ] Define a scenario schema (injected failure → expected root-cause label + **`gold_evidence_refs`** = the handles a correct diagnosis must cite). Use `bad_deploy_0001.json` as the first fixture.
-- [ ] `run_evals.py`: spin up the demo app, inject the scenario, run the agent, capture the `Diagnosis`. Judge stub = exact/keyword match for now (real LLM-judge in Wave 2). *(The deterministic handle-lookup fabrication check using `gold_evidence_refs` lands in Wave 2 / `evals/fabrication_check.py`.)*
-- [ ] **Step: failing test** for the runner on the single fixture → implement → pass.
-- [ ] `.github/workflows/evals.yml`: run the eval(s) on every push; print pass/fail.
-- [ ] Commit: `feat(evals): harness skeleton + first bad-deploy scenario + CI`.
+### Task 9: Eval harness skeleton + first scenario + CI  ✅ DONE
+- [x] Scenario schema + loader (`generator.py`); reuses `EvidenceRef` for `gold_evidence_refs`. Fixture at `evals/scenarios/fixtures/bad_deploy_0001.json`.
+- [x] `run_evals.py`: **fixture-based** (NOT the live app); serves canned signals through the real server filter logic; injectable provider. `judge.py` = keyword/handle **STUB** (real LLM-judge = Wave 2; `fabrication_check.py` = Wave 2).
+- [x] Failing test → `tests/evals/test_runner.py` (4 tests, mocked).  *(Gap: `run_all()`/`main()` untested.)*
+- [x] `.github/workflows/evals.yml`: **keyless deterministic gate** (lint + `pytest`). Real-model eval = Wave 2, **key-gated** (DR-0012).
+- [x] Commit: `feat(evals): harness skeleton + first bad-deploy scenario + CI`
+- [x] Added: `pyproject` `[tool.pytest.ini_options] pythonpath = ["."]`.
 
-**Wave 1 exit criteria:** from a clean clone, a developer can break the demo, run `quellgeist diagnose`, and get a correct, evidence-cited postmortem for the bad-deploy case; CI runs the single eval green.
+**Wave 1 exit criteria:** the from-clean-clone demo path is built and unit-tested (37 tests) but **not yet demonstrated against a real model** (blocked by Gemini limit:0/503); CI runs the eval **harness** green (deterministic), not yet a real-model eval. **Gate: Wave 1 is not "closed" until one live Qwen run produces a correct evidence-cited postmortem AND the DR-0009 id-fidelity number is recorded.**
 
 ---
 
