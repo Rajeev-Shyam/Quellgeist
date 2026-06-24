@@ -1,0 +1,32 @@
+name: ci
+
+# Deterministic gate: lint (ruff + black via pre-commit) and the pytest suite,
+# which includes the eval HARNESS run against fixtures. It does NOT call a live
+# model -- real model-driven evals are key-gated and land in Wave 2 (DR-0012),
+# so naming this "evals" overstated it. Keyless, so it stays green on fork PRs.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: lint + test gate (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Lint + format check (ruff + black via pre-commit)
+        run: uv run pre-commit run --all-files
+      - name: Tests (deterministic gate)
+        run: uv run pytest tests/ -q
