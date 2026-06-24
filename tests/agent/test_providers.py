@@ -76,3 +76,40 @@ def test_non_retryable_propagates_immediately(monkeypatch):
             [{"role": "user", "content": "hi"}]
         )
     assert calls["n"] == 1  # not retried
+
+
+def test_completion_receives_explicit_timeout(monkeypatch):
+    captured: dict = {}
+
+    def fake(**kwargs):
+        captured.update(kwargs)
+        return _ok()
+
+    monkeypatch.setattr(litellm, "completion", fake)
+    LiteLLMProvider(model="gemini/x", timeout=12.5).complete(
+        [{"role": "user", "content": "hi"}]
+    )
+    assert captured["timeout"] == 12.5  # a hung request can't wedge the loop
+    assert captured["model"] == "gemini/x"
+
+
+def test_backoff_is_jittered_within_bounds(monkeypatch):
+    sleeps: list[float] = []
+    monkeypatch.setattr(time, "sleep", lambda s: sleeps.append(s))
+    calls = {"n": 0}
+
+    def fake(**kwargs):
+        calls["n"] += 1
+        if calls["n"] < 3:  # fail twice, then succeed
+            raise _overloaded()
+        return _ok()
+
+    monkeypatch.setattr(litellm, "completion", fake)
+    LiteLLMProvider(model="gemini/x", max_retries=4, backoff_base=2.0).complete(
+        [{"role": "user", "content": "hi"}]
+    )
+    # two backoffs: each is base*2^i plus jitter in [0, base*2^i], so the sleep
+    # lands in [base*2^i, 2*base*2^i) -- monotone bands, never a fixed value.
+    assert len(sleeps) == 2
+    assert 2.0 <= sleeps[0] < 4.0
+    assert 4.0 <= sleeps[1] < 8.0
