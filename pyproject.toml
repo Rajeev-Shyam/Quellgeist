@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "quellgeist"
-version = "0.0.1"
+version = "0.1.0"
 description = "Model-agnostic AI agent for first-line production-incident triage; read-only evidence tools exposed as MCP servers."
 readme = "README.md"
 requires-python = ">=3.12"
