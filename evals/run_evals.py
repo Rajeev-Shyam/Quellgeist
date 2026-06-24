@@ -21,8 +21,7 @@ from evals.judge import JudgeResult, judge
 from evals.scenarios.generator import Scenario, load_scenario
 from quellgeist.agent.loop import LoopResult, ToolSpec, run_loop
 from quellgeist.agent.providers import LiteLLMProvider, Provider
-from quellgeist.servers.commits_mcp import _recent_commits
-from quellgeist.servers.logs_mcp import _filter_rows
+from quellgeist.servers.filters import filter_log_rows, recent_commits
 
 FIXTURES = Path(__file__).parent / "scenarios" / "fixtures"
 
@@ -32,10 +31,10 @@ def scenario_tools(scenario: Scenario) -> list[ToolSpec]:
     real MCP servers, so the agent behaves identically to a live run."""
 
     def query_logs(since=None, level=None, route=None):
-        return _filter_rows(scenario.logs, since, level, route)
+        return filter_log_rows(scenario.logs, since, level, route)
 
     def get_recent_commits(since=None, limit=None):
-        return _recent_commits(scenario.commits, since, limit)
+        return recent_commits(scenario.commits, since, limit)
 
     return [
         ToolSpec(

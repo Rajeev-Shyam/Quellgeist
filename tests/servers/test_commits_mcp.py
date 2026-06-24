@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from quellgeist.servers.commits_mcp import _recent_commits, get_recent_commits
+from quellgeist.servers.commits_mcp import get_recent_commits
+from quellgeist.servers.filters import recent_commits
 
 # Mirrors demo/deploy_log.json written by demo/chaos/bad_deploy.py: stored
 # oldest-first (benign README commit, then the bad auth.py deploy ~30s ago).
@@ -44,16 +45,16 @@ def test_get_recent_commits_newest_first(tmp_path, monkeypatch):
 
 
 def test_limit_keeps_n_most_recent():
-    assert [c["sha"] for c in _recent_commits(SAMPLE_COMMITS, limit=1)] == ["a1b2c3d"]
+    assert [c["sha"] for c in recent_commits(SAMPLE_COMMITS, limit=1)] == ["a1b2c3d"]
 
 
 def test_since_keeps_at_or_after():
-    result = _recent_commits(SAMPLE_COMMITS, since="2026-06-23T00:00:00Z")
+    result = recent_commits(SAMPLE_COMMITS, since="2026-06-23T00:00:00Z")
     assert [c["sha"] for c in result] == ["a1b2c3d"]
 
 
 def test_sha_preserved_verbatim():
-    assert "a1b2c3d" in [c["sha"] for c in _recent_commits(SAMPLE_COMMITS)]
+    assert "a1b2c3d" in [c["sha"] for c in recent_commits(SAMPLE_COMMITS)]
 
 
 def test_missing_file_returns_empty(tmp_path, monkeypatch):

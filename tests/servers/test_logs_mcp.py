@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from quellgeist.servers.logs_mcp import _filter_rows, query_logs
+from quellgeist.servers.filters import filter_log_rows
+from quellgeist.servers.logs_mcp import query_logs
 
 # Mirrors the live JSONL shape and bad_deploy_0001.json. The ERROR rows are ids
 # 2,3,4 -- deliberately NOT 0..n -- so a renumber-by-index bug is caught.
@@ -85,21 +86,21 @@ def test_level_filter_is_case_insensitive(tmp_path, monkeypatch):
 
 
 def test_filter_preserves_source_ids_in_memory():
-    result = _filter_rows(SAMPLE_ROWS, route="/login", level="ERROR")
+    result = filter_log_rows(SAMPLE_ROWS, route="/login", level="ERROR")
     assert [r["id"] for r in result] == [2, 3, 4]
 
 
 def test_route_filter():
-    assert [r["id"] for r in _filter_rows(SAMPLE_ROWS, route="/data")] == [5]
+    assert [r["id"] for r in filter_log_rows(SAMPLE_ROWS, route="/data")] == [5]
 
 
 def test_since_filter_keeps_at_or_after():
-    result = _filter_rows(SAMPLE_ROWS, since="2026-06-18T10:07:44Z")
+    result = filter_log_rows(SAMPLE_ROWS, since="2026-06-18T10:07:44Z")
     assert [r["id"] for r in result] == [4, 5]
 
 
 def test_no_filters_returns_all_in_source_order():
-    assert [r["id"] for r in _filter_rows(SAMPLE_ROWS)] == [0, 1, 2, 3, 4, 5]
+    assert [r["id"] for r in filter_log_rows(SAMPLE_ROWS)] == [0, 1, 2, 3, 4, 5]
 
 
 def test_missing_log_file_returns_empty(tmp_path, monkeypatch):

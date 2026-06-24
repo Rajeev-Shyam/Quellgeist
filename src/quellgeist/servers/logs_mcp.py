@@ -21,6 +21,8 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from quellgeist.servers.filters import filter_log_rows
+
 DEFAULT_LOG_PATH = "demo/incident_logs.jsonl"
 
 mcp = FastMCP("quellgeist-logs")
@@ -46,27 +48,6 @@ def _read_log_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _filter_rows(
-    rows: list[dict[str, Any]],
-    since: str | None = None,
-    level: str | None = None,
-    route: str | None = None,
-) -> list[dict[str, Any]]:
-    """Apply optional, AND-combined filters. Returns rows unchanged, in source
-    order, ids verbatim -- never renumbered by result position."""
-    level_norm = level.upper() if level else None
-    out: list[dict[str, Any]] = []
-    for row in rows:
-        if since is not None and row.get("ts", "") < since:
-            continue
-        if level_norm is not None and row.get("level") != level_norm:
-            continue
-        if route is not None and row.get("route") != route:
-            continue
-        out.append(row)
-    return out
-
-
 @mcp.tool(
     description=(
         "Query the demo service's structured incident logs. Returns matching log "
@@ -83,7 +64,7 @@ def query_logs(
     level: str | None = None,
     route: str | None = None,
 ) -> list[dict[str, Any]]:
-    return _filter_rows(_read_log_rows(_log_path()), since, level, route)
+    return filter_log_rows(_read_log_rows(_log_path()), since, level, route)
 
 
 def main() -> None:
