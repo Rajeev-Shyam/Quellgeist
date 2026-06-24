@@ -99,8 +99,11 @@ def run_loop(
     tools: list[ToolSpec],
     *,
     now: str,
-    max_steps: int = 6,
+    max_steps: int = 8,
 ) -> LoopResult:
+    # max_steps=8 is the shared default with the CLI (--max-steps) and the eval
+    # harness: room for ~2 tool calls plus a few schema-violation/tool-failure
+    # retries before the model must diagnose, while still bounding a stuck loop.
     by_name = {t.name: t for t in tools}
     tool_lines = [f"{t.name}: {t.description}" for t in tools]
     messages: list[dict[str, str]] = [

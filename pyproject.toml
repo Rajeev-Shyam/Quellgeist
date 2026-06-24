@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "quellgeist"
 version = "0.0.1"
-description = "Model-agnostic, MCP-powered AI agent for first-line production-incident triage."
+description = "Model-agnostic AI agent for first-line production-incident triage; read-only evidence tools exposed as MCP servers."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
@@ -27,8 +27,6 @@ dependencies = [
 ]
 
 [project.scripts]
-# CLI lands in Task 8; declared now so packaging stays stable. `quellgeist` will
-# ImportError until quellgeist/cli.py exists — that's expected this wave.
 quellgeist = "quellgeist.cli:main"
 
 [dependency-groups]
