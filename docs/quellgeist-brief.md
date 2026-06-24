@@ -1,8 +1,6 @@
 # Project Brief — Quellgeist
 
 *Incident Triage Copilot · open-source, model-agnostic, MCP-powered AI assistant*
-*Portfolio project #1 for Forward Deployed Engineer (AI-company) applications*
-*Version 5 (model default reconciled to DR-0008) · 2026-06-18 · name: **Quellgeist***
 
 ---
 
@@ -14,7 +12,7 @@ Quellgeist is an open-source AI agent that performs the first-line diagnosis of 
 
 ## 2. Goal & Purpose
 
-**Primary purpose — portfolio signal.** Prove AI-company FDE-grade ability: take a messy multi-system problem, build on platform primitives (MCP), make it *provably reliable* (evals + a verifier guarantee), engineer it for *cost* (small fine-tuned local model + a free-tier verifier), and communicate it cleanly (docs, a runnable demo, written case studies).
+**Primary purpose — demonstrate engineering depth.** Take a messy multi-system problem, build on platform primitives (MCP), make it *provably reliable* (evals + a verifier guarantee), engineer it for *cost* (small fine-tuned local model + a free-tier verifier), and communicate it cleanly (docs, a runnable demo, written case studies).
 
 **Secondary purpose — real utility.** Genuinely cut time-to-diagnosis in incident response for small teams and self-hosters.
 
