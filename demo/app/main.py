@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import structlog
@@ -26,10 +27,19 @@ from demo.app import auth
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 LOG_PATH = Path(os.getenv("QG_LOG_PATH", _REPO_ROOT / "demo" / "incident_logs.jsonl"))
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-LOG_PATH.write_text("")  # fresh log each app session
 _log_file = LOG_PATH.open(
     "a", buffering=1
 )  # append (O_APPEND): safe even if reset truncates mid-session
+
+
+def _init_log() -> None:
+    """Start each app session with a fresh incident log. Called from the
+    lifespan startup, NOT at import time -- so merely importing this module
+    (to reuse its tool functions, or in a test) never truncates an existing
+    log. The O_APPEND handle above stays valid: its next write lands at
+    offset 0."""
+    LOG_PATH.write_text("")
+
 
 _id_lock = threading.Lock()
 _next_id = 0
@@ -73,7 +83,14 @@ IN_FLIGHT = Gauge("qg_in_flight_requests", "In-flight requests")
 
 # --- app --------------------------------------------------------------------
 
-app = FastAPI(title="Quellgeist demo service")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _init_log()  # fresh log each app session (previously an import-time effect)
+    yield
+
+
+app = FastAPI(title="Quellgeist demo service", lifespan=lifespan)
 
 
 @app.middleware("http")
