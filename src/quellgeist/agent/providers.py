@@ -13,12 +13,15 @@ vary across Gemini vs a 4-bit Qwen on Ollama. This keeps the loop identical on
 every backend -- the property Wave 0 relied on.
 
 ``complete`` retries transient provider failures (503 overload, 429 rate limit,
-500s, timeouts) with bounded exponential backoff. This is explicit and tested
-rather than delegated to LiteLLM's opaque ``num_retries`` because the project's
-headline is *provable* reliability: a single transient 503 must not abort a
-diagnosis, and in Wave 2 it must not redden a 50-scenario CI run. Retry does NOT
-rescue a hard ``limit: 0`` quota (that needs account validation), only genuinely
-transient failures.
+500s, timeouts) with bounded, jittered exponential backoff, and passes an
+explicit per-call ``timeout`` so a hung request can't silently wedge the loop.
+This is explicit and tested rather than delegated to LiteLLM's opaque
+``num_retries`` because the project's headline is *provable* reliability: a
+single transient 503 must not abort a diagnosis, and in Wave 2 it must not
+redden a 50-scenario CI run -- the jitter keeps a batch of scenarios all hitting
+the same 503 from resynchronising their retries into a thundering herd. Retry
+does NOT rescue a hard ``limit: 0`` quota (that needs account validation), only
+genuinely transient failures.
 """
 
 from __future__ import annotations
@@ -51,13 +54,16 @@ class LiteLLMProvider:
         temperature: float = 0.0,
         max_retries: int = 4,
         backoff_base: float = 2.0,
+        timeout: float = 60.0,
     ) -> None:
         self.model = model or DEFAULT_MODEL
         self.temperature = temperature
         self.max_retries = max_retries
         self.backoff_base = backoff_base
+        self.timeout = timeout  # per-call ceiling; a hung request raises Timeout
 
     def complete(self, messages: list[dict[str, str]]) -> str:
+        import random
         import time
 
         import litellm
@@ -81,11 +87,14 @@ class LiteLLMProvider:
                     model=self.model,
                     messages=messages,
                     temperature=self.temperature,
+                    timeout=self.timeout,
                 )
                 return resp.choices[0].message.content or ""
             except retryable:
                 if attempt == self.max_retries - 1:
                     raise  # exhausted: surface the real provider error + traceback
-                time.sleep(delay)
+                # full jitter over [delay, 2*delay): decorrelates concurrent
+                # scenarios' retries so they don't stampede the provider in sync.
+                time.sleep(delay + random.uniform(0.0, delay))
                 delay *= 2  # exponential backoff
         raise RuntimeError("unreachable: retry loop exited without return or raise")
