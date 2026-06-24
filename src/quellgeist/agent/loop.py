@@ -133,9 +133,20 @@ def run_loop(
                 continue
 
         if action in by_name:
-            args = obj.get("args") or {}
+            args = obj.get("args")
+            if not isinstance(args, dict):
+                msg = f"'args' for {action!r} must be a JSON object"
+                result.schema_violations.append(msg)
+                messages.append({"role": "user", "content": _retry_msg(msg)})
+                continue
             result.tool_calls.append((action, args))
-            rows = by_name[action].fn(**args)
+            try:
+                rows = by_name[action].fn(**args)
+            except Exception as e:  # tool failed -> observe + retry, never crash
+                msg = f"tool {action} failed: {type(e).__name__}: {e}"
+                result.schema_violations.append(msg)
+                messages.append({"role": "user", "content": _retry_msg(msg)})
+                continue
             _record_seen(result, rows)
             messages.append(
                 {

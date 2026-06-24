@@ -197,3 +197,101 @@ def test_model_abstention_passthrough():
     result = run_loop(provider, _tools(), now="t")
     assert result.diagnosis.abstained is True
     assert result.diagnosis.abstention_reason == "signals too weak"
+
+
+def test_tool_exception_is_observed_then_recovers():
+    """A tool that raises must NOT crash the loop (the headline reliability
+    claim): the failure is recorded like a schema violation, surfaced to the
+    model as a retry, and the loop can still reach a valid diagnosis."""
+
+    def boom(**kw):
+        raise RuntimeError("backend exploded")
+
+    tools = [
+        ToolSpec("query_logs", "filter structured logs", boom),
+        ToolSpec("get_recent_commits", "list recent deploys", lambda **k: COMMITS),
+    ]
+    provider = FakeProvider(
+        [
+            json.dumps({"action": "query_logs", "args": {"level": "ERROR"}}),
+            json.dumps({"action": "get_recent_commits", "args": {}}),
+            _VALID_DIAGNOSE,
+        ]
+    )
+    result = run_loop(provider, tools, now="t")
+
+    assert result.schema_violations == [
+        "tool query_logs failed: RuntimeError: backend exploded"
+    ]
+    assert result.diagnosis.abstained is False
+    assert result.diagnosis.hypotheses[0].confidence == 0.9
+
+
+def test_tool_exception_then_exhaustion_abstains():
+    """If every tool call fails, max_steps is reached and the loop abstains
+    gracefully -- it never raises. This is the proof of the 'never crash'
+    headline: a wholly broken tool degrades to 'insufficient evidence'."""
+
+    def boom(**kw):
+        raise RuntimeError("backend exploded")
+
+    tools = [ToolSpec("query_logs", "filter structured logs", boom)]
+    provider = FakeProvider([json.dumps({"action": "query_logs", "args": {}})] * 6)
+    result = run_loop(provider, tools, now="t", max_steps=6)
+
+    assert result.diagnosis.abstained is True
+    assert result.diagnosis.abstention_reason
+    assert len(result.schema_violations) == 6
+    assert all(
+        v == "tool query_logs failed: RuntimeError: backend exploded"
+        for v in result.schema_violations
+    )
+
+
+def test_non_dict_args_is_a_violation_not_a_crash():
+    """`args` that is not a JSON object is rejected BEFORE the tool runs: the
+    loop records a schema violation and retries rather than calling the tool
+    with a bad payload."""
+    calls: list[dict] = []
+
+    def query_logs(**kw):
+        calls.append(kw)
+        return ERROR_ROWS
+
+    tools = [
+        ToolSpec("query_logs", "filter structured logs", query_logs),
+        ToolSpec("get_recent_commits", "list recent deploys", lambda **k: COMMITS),
+    ]
+    provider = FakeProvider(
+        [
+            json.dumps({"action": "query_logs", "args": "ERROR"}),  # string, not object
+            _VALID_DIAGNOSE,
+        ]
+    )
+    result = run_loop(provider, tools, now="t")
+
+    assert calls == []  # the malformed call never reached the tool
+    assert result.schema_violations == ["'args' for 'query_logs' must be a JSON object"]
+    assert result.diagnosis.abstained is False
+
+
+def test_unexpected_kwarg_is_observed_not_raised():
+    """A dict `args` carrying a kwarg the tool does not accept surfaces as a
+    caught tool failure (TypeError), not a crash -- then the loop recovers."""
+
+    def strict_logs(level=None):  # narrow signature, no **kwargs
+        return ERROR_ROWS
+
+    tools = [ToolSpec("query_logs", "filter structured logs", strict_logs)]
+    provider = FakeProvider(
+        [
+            json.dumps({"action": "query_logs", "args": {"nonexistent": 1}}),
+            json.dumps({"action": "query_logs", "args": {"level": "ERROR"}}),
+            _VALID_DIAGNOSE,
+        ]
+    )
+    result = run_loop(provider, tools, now="t")
+
+    assert len(result.schema_violations) == 1
+    assert result.schema_violations[0].startswith("tool query_logs failed: TypeError")
+    assert result.diagnosis.abstained is False
