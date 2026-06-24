@@ -16,6 +16,9 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0007 | Model selection: Qwen3.5-4B default, Qwen3-4B fallback, Qwen3-8B bigger candidate | Superseded by DR-0008 | — |
 | DR-0008 | Wave 0 gate outcome: Qwen3-4B confirmed as default reasoner | Accepted (firm) | Wave 4 results |
 | DR-0009 | Evidence as structured handles + deterministic handle-lookup fabrication check | Accepted (provisional) | Wave 2 baseline |
+| DR-0010 | Agent loop: JSON-action ReAct, in-process tools (stdio client deferred), measure-not-enforce | Accepted (provisional) | Wave 2 baseline |
+| DR-0011 | Commits source: thin custom MCP over deploy_log.json (real GitHub MCP rejected for v1) | Accepted (provisional) | Wave 5 (distribution) |
+| DR-0012 | Verifier/free-tier reality: Gemini free tier returns limit:0 unvalidated; model-calling CI must be key-gated | Accepted (provisional) — refines DR-0003 | Wave 2 verifier |
 
 ---
 
@@ -286,3 +289,37 @@ The agent cites evidence **only as structured handles** — a log row's source-s
 - Resolves the Wave 0 carry-forward "fabrication check needs fuzzy/structured matching" by choosing **structured**.
 - `bad_deploy_0001.json` gains per-row `id`s and a `gold_evidence_refs` field under this decision.
 - Related: DR-0003 (reliability — refined here), DR-0008 (the Wave 0 finding that motivated this), DR-0006 (stack).
+
+# DR-0010 — Agent loop architecture
+
+##  Decision
+a legible model-agnostic JSON-action ReAct loop (model emits {"action":…} text, we parse) rather than native function-calling; tools wired in-process behind a ToolSpec registry in Wave 1 with the real stdio MCP client deferred; loop returns a LoopResult carrying the diagnosis + a fidelity trace (schema_violations, seen_handles, cited_but_unseen_handles) and measures, does not enforce, fabrication (schema validity is enforced with retry→graceful abstention).
+
+## Rationale
+model-agnosticism across Gemini and local 4-bit Qwen; legibility; keeps the deterministic guarantee in Wave 2 where it belongs.
+
+## Watch-outs
+MCP-over-the-wire not yet demonstrated; cited_but_unseen is a run-scoped proxy, not the real check; provider retry rescues transient failures only. Refines DR-0006; revisit Wave 2.
+
+
+# DR-0012 — Verifier / free-tier reality (refines DR-0003)
+
+##  Decision
+ship a thin custom commits MCP server (get_recent_commits over demo/deploy_log.json) rather than reuse the real GitHub MCP.
+
+## Considered
+GitHub's official API server (needs PAT + network + real pushed commits — collides with CI/offline/self-contained); the reference local git server mcp-server-git (real git, offline, but needs real commits + a chaos redesign).
+
+## Rationale
+the plan sanctioned the deploy_log.json path; keeps the demo reproducible, offline, token-free; the loop stays tool-agnostic so the real GitHub MCP is a clean post-v1 adapter. Refines DR-0006; revisit at Wave 5.
+
+# DR-0011 — Commits evidence source
+
+##   Finding (web-verified, 2026)
+ a Gemini API key on an unvalidated, no-billing project returns 429 limit:0 on current models — Google gates the real free allowance behind account validation (linking a billing account; $0 within free limits but a card is required).
+
+## Consequence
+(a) model-calling CI cannot be the always-green gate — fork-PR runs have no secret, and quota/503 are external; keep the deterministic gate (tests + Wave 2 fabrication check) keyless and key-gate the verifier/judge/eval jobs; (b) the "free, no-card, CI-friendly Gemini verifier" assumption is dented — decide deliberately in Wave 2 whether Gemini-with-billing-linked stays the default or another verifier is chosen.
+
+## Status
+Accepted (provisional); revisit at Wave 2 verifier.
