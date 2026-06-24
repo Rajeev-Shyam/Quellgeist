@@ -20,6 +20,8 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from quellgeist.servers.filters import recent_commits
+
 DEFAULT_DEPLOY_LOG = "demo/deploy_log.json"
 
 mcp = FastMCP("quellgeist-commits")
@@ -44,21 +46,6 @@ def _read_commits(path: Path) -> list[dict[str, Any]]:
     return data
 
 
-def _recent_commits(
-    commits: list[dict[str, Any]],
-    since: str | None = None,
-    limit: int | None = None,
-) -> list[dict[str, Any]]:
-    """Newest-first, shas verbatim. Optional `since` keeps commits at or after
-    that UTC ts (lexicographic compare is valid for the fixed
-    %Y-%m-%dT%H:%M:%SZ format); optional `limit` keeps the N most recent."""
-    selected = [c for c in commits if since is None or c.get("ts", "") >= since]
-    selected.sort(key=lambda c: c.get("ts", ""), reverse=True)  # newest first
-    if limit is not None:
-        selected = selected[:limit]
-    return selected
-
-
 @mcp.tool(
     description=(
         "List the demo service's recent deploys/commits, newest first. Returns "
@@ -73,7 +60,7 @@ def get_recent_commits(
     since: str | None = None,
     limit: int | None = None,
 ) -> list[dict[str, Any]]:
-    return _recent_commits(_read_commits(_deploy_log_path()), since, limit)
+    return recent_commits(_read_commits(_deploy_log_path()), since, limit)
 
 
 def main() -> None:
