@@ -29,7 +29,7 @@ from __future__ import annotations
 import os
 from typing import Protocol, runtime_checkable
 
-DEFAULT_MODEL = os.environ.get("QG_MODEL", "gemini/gemini-2.0-flash")
+DEFAULT_MODEL = os.environ.get("QG_MODEL", "gemini/gemini-3.5-flash")
 
 
 @runtime_checkable
@@ -98,3 +98,34 @@ class LiteLLMProvider:
                 time.sleep(delay + random.uniform(0.0, delay))
                 delay *= 2  # exponential backoff
         raise RuntimeError("unreachable: retry loop exited without return or raise")
+
+
+def is_provider_unavailable(exc: BaseException) -> bool:
+    """True if ``exc`` is a model-backend *availability* failure -- 429 rate
+    limit / quota, 503 overload, 500, timeout, or connection error -- that
+    survived ``complete``'s retries, i.e. the model could not be reached, as
+    opposed to a bug or a model that ran and produced a bad answer.
+
+    Callers (the eval harness; later the CLI) use this to treat an unreachable
+    backend as a SKIP, not a reliability failure: a walled free tier (``limit:0``)
+    or a transient outage must not redden CI -- the keyless deterministic gate is
+    the reliability gate (DR-0012). Imported lazily so this module needs no
+    ``litellm`` at import time."""
+    from litellm.exceptions import (
+        APIConnectionError,
+        InternalServerError,
+        RateLimitError,
+        ServiceUnavailableError,
+        Timeout,
+    )
+
+    return isinstance(
+        exc,
+        (
+            RateLimitError,
+            ServiceUnavailableError,
+            InternalServerError,
+            Timeout,
+            APIConnectionError,
+        ),
+    )

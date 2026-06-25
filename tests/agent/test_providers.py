@@ -7,9 +7,13 @@ from types import SimpleNamespace
 
 import litellm
 import pytest
-from litellm.exceptions import BadRequestError, ServiceUnavailableError
+from litellm.exceptions import (
+    BadRequestError,
+    RateLimitError,
+    ServiceUnavailableError,
+)
 
-from quellgeist.agent.providers import LiteLLMProvider
+from quellgeist.agent.providers import LiteLLMProvider, is_provider_unavailable
 
 
 def _ok(text="ok"):
@@ -113,3 +117,23 @@ def test_backoff_is_jittered_within_bounds(monkeypatch):
     assert len(sleeps) == 2
     assert 2.0 <= sleeps[0] < 4.0
     assert 4.0 <= sleeps[1] < 8.0
+
+
+def test_is_provider_unavailable_true_for_quota_and_overload():
+    # A walled free tier (429) and an overloaded backend (503) are "can't reach
+    # the model" -> a SKIP for callers, not a reliability failure (DR-0012).
+    assert is_provider_unavailable(
+        RateLimitError(message="quota", llm_provider="gemini", model="m")
+    )
+    assert is_provider_unavailable(
+        ServiceUnavailableError(message="busy", llm_provider="gemini", model="m")
+    )
+
+
+def test_is_provider_unavailable_false_for_real_errors():
+    # A bad request (the model ran and rejected the input) and a plain bug are
+    # NOT availability problems -- they must still surface, never be masked.
+    assert not is_provider_unavailable(
+        BadRequestError(message="bad", llm_provider="gemini", model="m")
+    )
+    assert not is_provider_unavailable(ValueError("a real bug"))
