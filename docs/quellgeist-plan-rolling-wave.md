@@ -166,7 +166,7 @@ quellgeist/
 - [x] (1) `evals/fabrication_check.py` — full-signal-set membership, fail-closed; wired into the harness so a fabricated handle fails the scenario (DR-0013). **Done, deterministic, tested.**
 - [ ] (2) verifier pass — **config knob added (`QG_VERIFIER_MODEL`); LOGIC held as a `NotImplementedError` stub** until the DR-0012 decision + the Qwen id-fidelity run (DR-0014). Not built against an assumed model.
 - [ ] (3) LLM-as-judge — **config knob added (`QG_JUDGE_MODEL`); LOGIC held as a stub** pending DR-0012 + a human-labelled gold subset. The deterministic keyword judge stays the keyless gate (not replaced).
-- [x] (4) key-gated CI eval job (`secrets.GEMINI_API_KEY`) added; runs the reasoner + keyword judge + fabrication check, skips cleanly without a key. Reliability **report/badge: TODO** (needs real numbers).
+- [x] (4) model eval is **out-of-band** (`eval.yml`: manual + merges to main), key-gated, and **quota-tolerant** — an unreachable/walled backend SKIPs (exit 0), only a model that ran-and-failed reddens (DR-0015). `ci.yml` (keyless lint+test) is the sole PR gate. Model **pinned to `gemini/gemini-3.5-flash`** (the old default silently ran 2.0-flash). Reliability **report/badge: TODO** (still no real numbers — free tier may be walled).
 - [x] (5) carry-forward: `run_all`/`main` tested; `since` format validated. stdio MCP client: still deferred (DR-0010).
 - **Gating prerequisites still open (block items 2–3 and the bar):** the **Qwen3-4B id-fidelity run**, the **DR-0012 verifier-model decision**, and a **human-labelled gold subset**. Until then **no real-model reliability numbers exist — none are quoted.**
 

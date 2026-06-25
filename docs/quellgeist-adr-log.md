@@ -21,6 +21,7 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0012 | Verifier/free-tier reality: Gemini free tier returns limit:0 unvalidated; model-calling CI must be key-gated | Accepted (provisional) — refines DR-0003 | Wave 2 verifier |
 | DR-0013 | Deterministic fabrication check: full-signal-set membership, fail-closed, at eval time | Accepted (provisional) — implements DR-0009 | Wave 3 (metrics) |
 | DR-0014 | Verifier + LLM-judge: model-agnostic config now, model-coupled logic deferred to stubs pending DR-0012 + the Qwen run | Accepted (provisional) — refines DR-0003/DR-0012 | After the Qwen id-fidelity run |
+| DR-0015 | CI model eval is out-of-band + quota-tolerant (skip≠fail); default model pinned/corrected to gemini-3.5-flash | Accepted (provisional) — refines DR-0012 | After a non-walled key exists |
 
 ---
 
@@ -357,3 +358,21 @@ Keeps the model-agnostic thesis (config, not vendor lock) and a keyless determin
 
 ## Watch-outs
 The verifier and LLM judge are **stubs** — building them is gated on the Qwen id-fidelity run (still pending) and the DR-0012 decision. The LLM judge additionally needs a **human-labelled gold subset** before its scores are trusted. **No real-model reliability numbers exist yet — none are quoted anywhere.** Refines DR-0003 and DR-0012; revisit after the Qwen run.
+
+# DR-0015 — CI model eval is out-of-band + quota-tolerant; default model corrected (refines DR-0012)
+
+**Status:** Accepted (provisional) · **Date:** 2026-06-25 · **Revisit at:** when a non-walled model key exists
+
+## Context
+The Wave-2 key-gated eval job (run on every PR/push) went **red**. Two root causes: (a) the repo had a `GEMINI_API_KEY` secret, so the job did NOT skip — it called the model and the **free tier 429'd** (`RequestsPerMinute/Day…FreeTier`, `RESOURCE_EXHAUSTED`); the provider's retry/backoff deliberately does not rescue a `limit:0`/quota error, so it propagated and the harness crashed (exit 1). (b) The job **never pinned `QG_MODEL`**, so it silently used the stale library default `gemini/gemini-2.0-flash` instead of the intended `gemini-3.5-flash`. DR-0012 (key-gating) was thus **necessary but insufficient**: a *present-but-walled* key still reddens CI.
+
+## Decision
+1. **Model id:** correct `DEFAULT_MODEL` to `gemini/gemini-3.5-flash` (a real current id; the old default was stale and inconsistent with the provider's own Gemini-3.x notes) and **pin `QG_MODEL` explicitly in CI** — never rely on the implicit default.
+2. **Quota-tolerance:** the harness treats *provider unavailability* — 429/quota, 503, 500, timeout, connection error, surfaced after `complete`'s retries — as a **SKIP (exit 0)**, distinct from a model that ran and produced a bad diagnosis (still returns 1 → red). Classifier: `is_provider_unavailable` in `providers.py`; `run_evals.main` skips on it.
+3. **Topology:** move the model eval **off feature PRs/pushes** into its own `eval.yml` (manual `workflow_dispatch` + merges to `main`). `ci.yml` (keyless lint+test) is the **only** PR gate.
+
+## Considered
+`continue-on-error: true` on the job (rejected: masks genuine eval failures as green and still burns quota every push); keeping it on every PR but quota-tolerant (rejected: burns free-tier quota + ~30s per push for a no-op); `gemini/gemini-flash-latest` floating alias (rejected: a reliability project pins versions for reproducibility).
+
+## Consequence
+PRs gate purely on the deterministic job — green on forks and during quota outages. The model eval is a **reporting** job: real numbers when a working key exists, a clean skip otherwise. **Still no real-model numbers** — the free tier may remain walled until billing is linked or a different backend is chosen (the open DR-0012 decision) / the local Qwen run. Refines DR-0012; revisit when a non-walled key exists.
