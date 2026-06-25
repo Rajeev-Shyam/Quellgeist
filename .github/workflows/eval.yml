@@ -1,0 +1,47 @@
+name: eval
+
+# Model-driven fixture eval: the reasoner loop + keyword judge + deterministic
+# fabrication check, run against the configured model to produce reliability
+# numbers. Deliberately OUT-OF-BAND -- not on feature PRs/pushes -- because a
+# free-tier key cannot sustain a model run on every commit (DR-0012: a present-
+# but-quota-walled key 429s and would redden every PR). The keyless deterministic
+# gate in ci.yml is the reliability gate; this is a reporting job.
+#
+# Runs on a manual trigger and on merges to main. Key-gated: skips with no
+# GEMINI_API_KEY secret. The harness itself treats an unreachable backend
+# (quota / 503 / timeout) as a SKIP, not a failure, so a walled key reports a
+# clean skip instead of a red X. The verifier / LLM-judge are still stubs
+# (DR-0014) and are not invoked here.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+
+jobs:
+  eval:
+    name: real-model eval (key-gated)
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # Pin the model explicitly -- never rely on the library default (the bug
+      # that silently ran 2.0-flash). Override per-run via the env if desired.
+      QG_MODEL: gemini/gemini-3.5-flash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Fixture eval against the configured model (skips without a key)
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "No model key secret -> skipping the model-driven eval (DR-0012)."
+            echo "The keyless deterministic gate (ci.yml) is the reliability gate."
+            exit 0
+          fi
+          echo "Running the eval against $QG_MODEL ..."
+          uv run python -m evals.run_evals
