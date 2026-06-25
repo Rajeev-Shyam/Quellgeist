@@ -142,11 +142,11 @@ evidence is too weak to name a confident cause.
 ## Running the model
 
 The reasoner is any [LiteLLM](https://docs.litellm.ai/) model string, selected by
-`--model` or the `QG_MODEL` env var (default `gemini/gemini-2.0-flash`). Provider
+`--model` or the `QG_MODEL` env var (default `gemini/gemini-3.5-flash`). Provider
 keys are read from the environment by LiteLLM; nothing is stored in the repo.
 
 ```bash
-export QG_MODEL="gemini/gemini-2.0-flash"
+export QG_MODEL="gemini/gemini-3.5-flash"
 export GEMINI_API_KEY="…"        # or run a local model via Ollama
 uv run quellgeist diagnose --show-trace
 ```
