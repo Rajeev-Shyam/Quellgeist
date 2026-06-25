@@ -1,0 +1,32 @@
+"""Tests for shared filter timestamp validation (Wave 2)."""
+
+from __future__ import annotations
+
+import pytest
+
+from quellgeist.servers.filters import filter_log_rows, recent_commits
+
+ROWS = [{"id": 0, "ts": "2026-06-18T10:00:00Z", "level": "INFO", "route": "/x"}]
+COMMITS = [{"sha": "a1b2c3d", "ts": "2026-06-18T10:00:00Z"}]
+
+
+def test_canonical_since_is_accepted():
+    assert filter_log_rows(ROWS, since="2026-06-18T09:00:00Z") == ROWS
+    assert recent_commits(COMMITS, since="2026-06-18T09:00:00Z") == COMMITS
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "yesterday",
+        "2026-06-18",  # date only, no time
+        "2026-6-18T10:00:00Z",  # not zero-padded -> breaks lexicographic order
+        "2026-06-18T10:00:00",  # missing trailing Z
+        "2026-06-18 10:00:00Z",  # space instead of T
+    ],
+)
+def test_noncanonical_since_raises(bad):
+    with pytest.raises(ValueError, match="since must be"):
+        filter_log_rows(ROWS, since=bad)
+    with pytest.raises(ValueError, match="since must be"):
+        recent_commits(COMMITS, since=bad)

@@ -12,7 +12,26 @@ each other's underscore-private helpers.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
+
+_TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def _require_canonical_ts(since: str) -> None:
+    """`since` filtering uses a lexicographic string compare, which is only
+    correct for the fixed zero-padded ``%Y-%m-%dT%H:%M:%SZ`` UTC form. Reject
+    anything else loudly (the loop turns this into a schema-violation retry)
+    rather than silently mis-filtering a non-canonical model-supplied timestamp.
+    """
+    try:
+        parsed = datetime.strptime(since, _TS_FMT)
+    except (ValueError, TypeError) as e:
+        raise ValueError(
+            f"since must be a UTC timestamp like '2026-06-18T10:02:12Z', got {since!r}"
+        ) from e
+    if parsed.strftime(_TS_FMT) != since:  # e.g. non-zero-padded '2026-6-18...'
+        raise ValueError(f"since must be zero-padded canonical UTC, got {since!r}")
 
 
 def filter_log_rows(
@@ -23,6 +42,8 @@ def filter_log_rows(
 ) -> list[dict[str, Any]]:
     """Apply optional, AND-combined filters. Returns rows unchanged, in source
     order, ids verbatim -- never renumbered by result position (DR-0009)."""
+    if since is not None:
+        _require_canonical_ts(since)
     level_norm = level.upper() if level else None
     out: list[dict[str, Any]] = []
     for row in rows:
@@ -44,6 +65,8 @@ def recent_commits(
     """Newest-first, shas verbatim. Optional `since` keeps commits at or after
     that UTC ts (lexicographic compare is valid for the fixed
     %Y-%m-%dT%H:%M:%SZ format); optional `limit` keeps the N most recent."""
+    if since is not None:
+        _require_canonical_ts(since)
     selected = [c for c in commits if since is None or c.get("ts", "") >= since]
     selected.sort(key=lambda c: c.get("ts", ""), reverse=True)  # newest first
     if limit is not None:
