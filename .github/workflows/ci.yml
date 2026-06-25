@@ -30,3 +30,32 @@ jobs:
         run: uv run pre-commit run --all-files
       - name: Tests (deterministic gate)
         run: uv run pytest tests/ -q
+
+  eval:
+    # Key-gated, model-driven fixture eval (reasoner loop + keyword judge +
+    # deterministic fabrication check). The `test` job is the real reliability
+    # gate (DR-0012): this one skips cleanly when no model key secret is set, so
+    # fork PRs (which never see the secret) stay green and a walled free tier
+    # can't redden CI. The verifier / LLM-judge are still stubs (DR-0014), so
+    # they are not invoked here.
+    name: real-model eval (key-gated)
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Fixture eval against the configured model (skips without a key)
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "No model key secret -> skipping the model-driven eval (DR-0012)."
+            echo "The keyless deterministic gate (job 'test') is the reliability gate."
+            exit 0
+          fi
+          uv run python -m evals.run_evals
