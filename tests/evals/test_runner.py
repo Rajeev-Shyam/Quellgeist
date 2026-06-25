@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from evals.run_evals import run_scenario
+import evals.run_evals as run_evals
+from evals.run_evals import main, run_all, run_scenario
 from evals.scenarios.generator import load_scenario
 
 FIXTURE = (
@@ -96,3 +97,83 @@ def test_loader_parses_gold_refs():
     scenario = load_scenario(FIXTURE)
     assert scenario.id == "bad_deploy_0001"
     assert {r.type for r in scenario.gold_evidence_refs} == {"log", "commit"}
+
+
+_CORRECT_SCRIPT = [
+    json.dumps({"action": "query_logs", "args": {"level": "ERROR"}}),
+    json.dumps({"action": "get_recent_commits", "args": {}}),
+    _diagnose(
+        "bad deploy a1b2c3d broke auth.verify_token",
+        [
+            {"type": "log", "id": 2, "note": "first 500"},
+            {"type": "commit", "sha": "a1b2c3d"},
+        ],
+    ),
+]
+
+
+def test_clean_correct_scenario_has_no_fabrication():
+    scenario = load_scenario(FIXTURE)
+    result = run_scenario(scenario, FakeProvider(list(_CORRECT_SCRIPT)))
+    assert result.fabrication.ok
+    assert result.passed  # judge passes AND nothing fabricated
+
+
+def test_fabricated_handle_fails_scenario_despite_correct_judge():
+    """Cites the gold evidence (so the judge passes) PLUS a nonexistent id --
+    the zero-fabrication bar must still fail the scenario."""
+    scenario = load_scenario(FIXTURE)
+    provider = FakeProvider(
+        [
+            json.dumps({"action": "query_logs", "args": {}}),
+            json.dumps({"action": "get_recent_commits", "args": {}}),
+            _diagnose(
+                "bad deploy a1b2c3d broke auth.verify_token",
+                [
+                    {"type": "log", "id": 2},
+                    {"type": "commit", "sha": "a1b2c3d"},
+                    {"type": "log", "id": 999, "note": "invented"},
+                ],
+            ),
+        ]
+    )
+    result = run_scenario(scenario, provider)
+    assert result.judge.passed  # gold cited + correct cause
+    assert not result.fabrication.ok
+    assert ("log", 999) in result.fabrication.fabricated
+    assert not result.passed  # ... but the fabrication fails the scenario
+
+
+def test_run_all_returns_zero_on_clean_pass(capsys):
+    scenario = load_scenario(FIXTURE)
+    rc = run_all([scenario], FakeProvider(list(_CORRECT_SCRIPT)))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "1/1 scenarios passed; 0 with fabricated evidence" in out
+
+
+def test_run_all_returns_one_on_fabrication(capsys):
+    scenario = load_scenario(FIXTURE)
+    provider = FakeProvider(
+        [
+            json.dumps({"action": "query_logs", "args": {}}),
+            json.dumps({"action": "get_recent_commits", "args": {}}),
+            _diagnose(
+                "bad deploy a1b2c3d broke auth.verify_token",
+                [{"type": "log", "id": 2}, {"type": "log", "id": 999}],
+            ),
+        ]
+    )
+    rc = run_all([scenario], provider)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "1 with fabricated evidence" in out
+
+
+def test_main_offline_returns_zero(monkeypatch):
+    # main() globs the fixtures and builds a real provider; swap in a scripted
+    # fake so the entry point is exercised end-to-end with no model/network.
+    monkeypatch.setattr(
+        run_evals, "LiteLLMProvider", lambda: FakeProvider(list(_CORRECT_SCRIPT))
+    )
+    assert main() == 0
