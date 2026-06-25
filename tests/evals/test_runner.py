@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from litellm.exceptions import RateLimitError
+
 import evals.run_evals as run_evals
 from evals.run_evals import main, run_all, run_scenario
 from evals.scenarios.generator import load_scenario
@@ -177,3 +179,20 @@ def test_main_offline_returns_zero(monkeypatch):
         run_evals, "LiteLLMProvider", lambda: FakeProvider(list(_CORRECT_SCRIPT))
     )
     assert main() == 0
+
+
+class _UnavailableProvider:
+    """A backend that can't be reached (walled free-tier key 429s past retries)."""
+
+    def complete(self, messages):
+        raise RateLimitError(
+            message="quota exhausted", llm_provider="gemini", model="gemini/x"
+        )
+
+
+def test_main_skips_when_backend_unavailable(capsys):
+    # A present-but-quota-walled key must SKIP (exit 0), not redden CI: an
+    # unreachable model is not a reliability failure (DR-0012).
+    rc = main(provider=_UnavailableProvider())
+    assert rc == 0
+    assert "SKIPPED" in capsys.readouterr().err

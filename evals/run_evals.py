@@ -23,7 +23,11 @@ from evals.fabrication_check import FabricationResult, check_fabrication
 from evals.judge import JudgeResult, judge
 from evals.scenarios.generator import Scenario, load_scenario
 from quellgeist.agent.loop import LoopResult, ToolSpec, run_loop
-from quellgeist.agent.providers import LiteLLMProvider, Provider
+from quellgeist.agent.providers import (
+    LiteLLMProvider,
+    Provider,
+    is_provider_unavailable,
+)
 from quellgeist.servers.filters import filter_log_rows, recent_commits
 
 FIXTURES = Path(__file__).parent / "scenarios" / "fixtures"
@@ -104,12 +108,27 @@ def _load_all_fixtures() -> list[Scenario]:
     return [load_scenario(p) for p in sorted(FIXTURES.glob("*.json"))]
 
 
-def main() -> int:
+def main(provider: Provider | None = None) -> int:
     scenarios = _load_all_fixtures()
     if not scenarios:
         print("no fixtures found", file=sys.stderr)
         return 1
-    return run_all(scenarios, LiteLLMProvider())
+    try:
+        return run_all(scenarios, provider or LiteLLMProvider())
+    except Exception as exc:
+        # An unreachable backend (free-tier quota / 503 / timeout) is a SKIP, not
+        # a reliability failure: it must not redden CI (DR-0012). A model that
+        # RAN and produced a bad diagnosis returns 1 from run_all above -- that is
+        # a real failure and still reddens. Re-raise anything else (real bugs).
+        if is_provider_unavailable(exc):
+            print(
+                f"SKIPPED: model backend unavailable ({type(exc).__name__}) -- "
+                "quota/availability, not a reliability failure (DR-0012). The "
+                "keyless deterministic gate is the reliability gate.",
+                file=sys.stderr,
+            )
+            return 0
+        raise
 
 
 if __name__ == "__main__":
