@@ -19,6 +19,8 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0010 | Agent loop: JSON-action ReAct, in-process tools (stdio client deferred), measure-not-enforce | Accepted (provisional) | Wave 2 baseline |
 | DR-0011 | Commits source: thin custom MCP over deploy_log.json (real GitHub MCP rejected for v1) | Accepted (provisional) | Wave 5 (distribution) |
 | DR-0012 | Verifier/free-tier reality: Gemini free tier returns limit:0 unvalidated; model-calling CI must be key-gated | Accepted (provisional) — refines DR-0003 | Wave 2 verifier |
+| DR-0013 | Deterministic fabrication check: full-signal-set membership, fail-closed, at eval time | Accepted (provisional) — implements DR-0009 | Wave 3 (metrics) |
+| DR-0014 | Verifier + LLM-judge: model-agnostic config now, model-coupled logic deferred to stubs pending DR-0012 + the Qwen run | Accepted (provisional) — refines DR-0003/DR-0012 | After the Qwen id-fidelity run |
 
 ---
 
@@ -323,3 +325,35 @@ the plan sanctioned the deploy_log.json path; keeps the demo reproducible, offli
 
 ## Status
 Accepted (provisional); revisit at Wave 2 verifier.
+
+# DR-0013 — Deterministic fabrication check (implements DR-0009)
+
+**Status:** Accepted (provisional) · **Date:** 2026-06-25 · **Revisit at:** Wave 3 (metrics)
+
+## Decision
+`evals/fabrication_check.py` does a pure set-membership lookup: every cited handle `(type, id/sha)` must exist in the **full** signal set (all log ids + all commit shas of the scenario), checked at **eval time** against the complete signals — NOT in the loop, which only has the run-scoped `seen_handles` proxy. **Fail-closed:** a handle whose type/key is absent (including `MetricRef` until Wave 3 brings metrics into the signal set) counts as fabricated. Wired into the harness so a fabricated handle fails the scenario even when the keyword judge passes (zero-fabricated-causes is the headline bar). Existence only; *support* is the verifier's job, *quality* the judge's.
+
+## Considered
+Checking against `gold_evidence_refs` only (rejected: that is gold-matching, the judge's concern, not existence); enforcing in the loop via `cited_but_unseen` (rejected: that proxy over-flags real-but-unqueried ids — DR-0009 / Wave-1 review).
+
+## Rationale
+Makes DR-0009's "existence is the deterministic check" real and keyless; fixes the `cited_but_unseen` over-flagging by checking against all real signals, not just queried ones. Deterministic, fully tested (check + harness wiring).
+
+## Watch-outs
+When metrics land (Wave 3), extend `real_signal_handles` to include metric ids so legitimate `MetricRef` citations stop failing closed. Implements DR-0009; revisit Wave 3.
+
+# DR-0014 — Verifier + LLM-judge: model-agnostic config now, logic deferred (refines DR-0003, DR-0012)
+
+**Status:** Accepted (provisional) · **Date:** 2026-06-25 · **Revisit at:** after the Qwen id-fidelity run + the DR-0012 decision
+
+## Decision
+Wire the model-agnostic **config knobs** now — `QG_VERIFIER_MODEL` / `QG_JUDGE_MODEL` → `default_verifier_provider` / `default_judge_provider` (fall back to `QG_MODEL`) — but **defer the verifier/judge LOGIC to tracked `NotImplementedError` stubs** (`agent/verifier.py`, `evals/llm_judge.py`) until (a) the DR-0012 verifier/judge-model question is decided and (b) the Qwen3-4B id-fidelity run measures how the real reasoner cites evidence. The deterministic keyword judge (`evals/judge.py`) stays the **keyless gate**; the LLM judge will be the key-gated quality scorer, validated against a human-labelled gold subset before any score is quoted.
+
+## Considered
+Building the verifier/judge prompt+parse logic now against an assumed model (rejected: bakes in untested assumptions about the 4B's citation behaviour, which the Qwen run exists to measure); replacing the keyword judge with the LLM judge outright (rejected: makes the gate model-dependent — contradicts DR-0012); hard-coding a verifier vendor (rejected: re-introduces the Gemini `limit:0` problem — config-driven model-agnosticism defers the choice cleanly).
+
+## Rationale
+Keeps the model-agnostic thesis (config, not vendor lock) and a keyless deterministic gate, without writing model-coupled logic before prompt fidelity is measured.
+
+## Watch-outs
+The verifier and LLM judge are **stubs** — building them is gated on the Qwen id-fidelity run (still pending) and the DR-0012 decision. The LLM judge additionally needs a **human-labelled gold subset** before its scores are trusted. **No real-model reliability numbers exist yet — none are quoted anywhere.** Refines DR-0003 and DR-0012; revisit after the Qwen run.

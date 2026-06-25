@@ -161,8 +161,17 @@ quellgeist/
 **Carry-forward blockers note:** Qwen id-fidelity run + live-log-path confirmation are prerequisites before Wave 2 coding.
 **Rough tasks:** add the **verifier-model pass** (a stronger model — default Gemini's free API tier, Claude swappable — confirms cited evidence exists/supports each claim; downgrade or abstain otherwise); implement the **deterministic fabrication check** (every cited evidence item must exist in the real signals); add **abstention**; replace the judge stub with **LLM-as-judge on a rubric**; build a small **human-labelled gold subset** to validate the judge; set concrete reliability bars after a baseline; publish a CI reliability report/badge.
 **Beyond the existing rough tasks:** (1) evals/fabrication_check.py — deterministic handle-lookup against the full real-signal set / gold_evidence_refs (fixes the cited_but_unseen proxy); (2) verifier pass — resolve the DR-0012 Gemini-vs-alternative question first; (3) real LLM-as-judge + human gold subset (replaces the keyword stub); (4) key-gated CI eval job (if secrets.GEMINI_API_KEY != '') + reliability report/badge; (5) carry-forward fixes from the output review (test run_all/main; validate since format; consider the stdio MCP client adapter). Keep the train/eval distribution-separation constraint front-and-centre.
+
+**Progress (2026-06-25) — deterministic core done; model-coupled layers held as stubs (deliberate gate):**
+- [x] (1) `evals/fabrication_check.py` — full-signal-set membership, fail-closed; wired into the harness so a fabricated handle fails the scenario (DR-0013). **Done, deterministic, tested.**
+- [ ] (2) verifier pass — **config knob added (`QG_VERIFIER_MODEL`); LOGIC held as a `NotImplementedError` stub** until the DR-0012 decision + the Qwen id-fidelity run (DR-0014). Not built against an assumed model.
+- [ ] (3) LLM-as-judge — **config knob added (`QG_JUDGE_MODEL`); LOGIC held as a stub** pending DR-0012 + a human-labelled gold subset. The deterministic keyword judge stays the keyless gate (not replaced).
+- [x] (4) key-gated CI eval job (`secrets.GEMINI_API_KEY`) added; runs the reasoner + keyword judge + fabrication check, skips cleanly without a key. Reliability **report/badge: TODO** (needs real numbers).
+- [x] (5) carry-forward: `run_all`/`main` tested; `since` format validated. stdio MCP client: still deferred (DR-0010).
+- **Gating prerequisites still open (block items 2–3 and the bar):** the **Qwen3-4B id-fidelity run**, the **DR-0012 verifier-model decision**, and a **human-labelled gold subset**. Until then **no real-model reliability numbers exist — none are quoted.**
+
 **Key design constraint (from review):** keep the eval's *held-out* scenarios separate from anything used to tune prompts/model — see Wave 4 note on train/eval separation.
-**Exit criteria:** on the bad-deploy class, correct cause #1 in a high majority of runs, **zero fabricated causes on the eval set**, validated judge.
+**Exit criteria:** on the bad-deploy class, correct cause #1 in a high majority of runs, **zero fabricated causes on the eval set**, validated judge. *(Unmet: gated on the Qwen run + verifier/judge build + judge validation.)*
 
 ## Wave 3 — Breadth: Classes 2 & 3 + Metrics *(rolling)*
 
