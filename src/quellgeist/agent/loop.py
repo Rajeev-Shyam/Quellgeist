@@ -21,6 +21,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from quellgeist.agent.actions import JSONActionError as _ParseError
+from quellgeist.agent.actions import extract_json as _extract_json
 from quellgeist.agent.prompts import build_system_prompt, user_trigger
 from quellgeist.agent.providers import Provider
 from quellgeist.agent.schema import Diagnosis
@@ -55,23 +57,6 @@ class LoopResult:
         the deterministic check against the real signal set, and enforcement,
         land in Wave 2 (fabrication_check.py + verifier)."""
         return self.cited_handles() - self.seen_handles
-
-
-class _ParseError(ValueError):
-    pass
-
-
-def _extract_json(text: str) -> dict[str, Any]:
-    start = text.find("{")
-    if start == -1:
-        raise _ParseError("no JSON object found in model output")
-    try:
-        obj, _ = json.JSONDecoder().raw_decode(text, start)
-    except json.JSONDecodeError as e:
-        raise _ParseError(f"invalid JSON: {e}") from e
-    if not isinstance(obj, dict):
-        raise _ParseError("the JSON action must be an object")
-    return obj
 
 
 def _record_seen(result: LoopResult, rows: list[dict[str, Any]]) -> None:
