@@ -156,6 +156,26 @@ Heads-up (DR-0012): a Gemini key on an unvalidated, no-billing project returns
 **keyless** and model-driven evals are key-gated for Wave 2. At home the intended
 default reasoner is a local **Qwen3-4B** via Ollama (DR-0008).
 
+### Running the eval (reasoner + verifier + LLM-judge)
+
+The fixture eval scores the reasoner with a deterministic keyword judge + a
+zero-fabrication check (the keyless gate), and can additionally run two model
+layers (DR-0016): a **verifier** that confirms cited evidence supports each
+hypothesis (forcing abstention otherwise) and an advisory **LLM-judge** rubric.
+
+```bash
+export GEMINI_API_KEY="…"
+export QG_MODEL="gemini/gemini-3.5-flash"
+QG_VERIFY=1 QG_JUDGE_LLM=1 \
+QG_MIN_CALL_INTERVAL_S=6 \      # pace calls under the free-tier RPM (avoids 429 bursts)
+  uv run python -m evals.run_evals
+```
+
+`QG_VERIFIER_MODEL` / `QG_JUDGE_MODEL` override the model per layer (default
+`QG_MODEL`). An unreachable backend (quota/503) is reported as a **skip**, not a
+failure (DR-0015). The LLM-judge's scores are **advisory** until validated against
+a human-labelled gold subset.
+
 ## Status & roadmap
 
 Built in **rolling waves** — only the current wave is implemented in detail
