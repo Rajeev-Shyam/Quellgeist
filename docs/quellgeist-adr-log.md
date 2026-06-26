@@ -22,6 +22,7 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0013 | Deterministic fabrication check: full-signal-set membership, fail-closed, at eval time | Accepted (provisional) — implements DR-0009 | Wave 3 (metrics) |
 | DR-0014 | Verifier + LLM-judge: model-agnostic config now, model-coupled logic deferred to stubs pending DR-0012 + the Qwen run | Accepted (provisional) — refines DR-0003/DR-0012 | After the Qwen id-fidelity run |
 | DR-0015 | CI model eval is out-of-band + quota-tolerant (skip≠fail); default model pinned/corrected to gemini-3.5-flash | Accepted (provisional) — refines DR-0012 | After a non-walled key exists |
+| DR-0016 | Verifier + LLM-judge BUILT; gemini-3.5-flash provisional verifier/judge model; free tier viable with client-side pacing; judge advisory | Accepted (provisional) — completes DR-0014, refines DR-0012 | Wave 4 (Qwen reasoner + Claude-verifier) / human gold subset |
 
 ---
 
@@ -347,6 +348,13 @@ When metrics land (Wave 3), extend `real_signal_handles` to include metric ids s
 
 **Status:** Accepted (provisional) · **Date:** 2026-06-25 · **Revisit at:** after the Qwen id-fidelity run + the DR-0012 decision
 
+> **Update (2026-06-25): the deferred logic is now BUILT — see DR-0016.** The stub
+> phase below recorded *why* we waited; the decision to build (against
+> gemini-3.5-flash, which the usage dashboard proved viable) supersedes the
+> "hold as a stub" part. The model-agnostic config knobs and the
+> "judge needs a human gold subset before its scores are trusted" constraint
+> from this record still stand.
+
 ## Decision
 Wire the model-agnostic **config knobs** now — `QG_VERIFIER_MODEL` / `QG_JUDGE_MODEL` → `default_verifier_provider` / `default_judge_provider` (fall back to `QG_MODEL`) — but **defer the verifier/judge LOGIC to tracked `NotImplementedError` stubs** (`agent/verifier.py`, `evals/llm_judge.py`) until (a) the DR-0012 verifier/judge-model question is decided and (b) the Qwen3-4B id-fidelity run measures how the real reasoner cites evidence. The deterministic keyword judge (`evals/judge.py`) stays the **keyless gate**; the LLM judge will be the key-gated quality scorer, validated against a human-labelled gold subset before any score is quoted.
 
@@ -376,3 +384,22 @@ The Wave-2 key-gated eval job (run on every PR/push) went **red**. Two root caus
 
 ## Consequence
 PRs gate purely on the deterministic job — green on forks and during quota outages. The model eval is a **reporting** job: real numbers when a working key exists, a clean skip otherwise. **Still no real-model numbers** — the free tier may remain walled until billing is linked or a different backend is chosen (the open DR-0012 decision) / the local Qwen run. Refines DR-0012; revisit when a non-walled key exists.
+
+# DR-0016 — Verifier + LLM-judge built; gemini-3.5-flash as the provisional verifier/judge model (completes DR-0014, refines DR-0012)
+
+**Status:** Accepted (provisional) · **Date:** 2026-06-25 · **Revisit at:** Wave 4 (Qwen reasoner + Claude-verifier comparison) / when a human gold subset exists
+
+## Context
+The Gemini usage dashboard showed `gemini-3.5-flash` genuinely **works on the free tier** (input/output tokens consumed, 100% success at times); the earlier 429/503 cluster was **burst** behaviour from repeated CI runs firing the loop's calls in quick succession, not an unusable API. So the DR-0014 gate ("don't build the verifier/judge until the Qwen id-fidelity run") was relaxed **by decision**: build both now against `gemini-3.5-flash`. Their logic is model-agnostic JSON-action (DR-0010), so it carries to a local Qwen later.
+
+## Decision
+1. **`verify()` built** (`agent/verifier.py`): resolve each hypothesis's cited handles to their actual signal rows, ask the model whether that evidence *supports* the cause, drop the unsupported, and force abstention if none survive. **Conservative** — an unresolvable handle or an unparseable verdict counts as unsupported (and an all-missing hypothesis short-circuits to unsupported with no model call). Checks **support**, not existence (DR-0013) or quality (the judge).
+2. **`llm_judge()` built** (`evals/llm_judge.py`): a rubric verdict (`correct_cause` / `evidence_valid` / `actions_sensible` + a 0–1 score) graded against the scenario's gold. **Advisory only** — the keyword judge + fabrication check stay the **keyless gate**; rubric scores are **not quoted as validated** until checked against a **human-labelled gold subset** (DR-0003). An unparseable reply scores 0.
+3. **Opt-in wiring**: `QG_VERIFY=1` / `QG_JUDGE_LLM=1` enable them in the harness; model from `QG_VERIFIER_MODEL` / `QG_JUDGE_MODEL` (default `QG_MODEL` = `gemini-3.5-flash`). The verified diagnosis is what the gate scores. Provider-unavailability still skips (DR-0015).
+4. **Free-tier viability**: a single paced run fits the RPM. Added **client-side call pacing** (`QG_MIN_CALL_INTERVAL_S`, default off) so the loop + verifier + judge call sequence stays under the cap instead of bursting into 429s.
+
+## Considered
+Waiting for the Qwen run (rejected by decision — Gemini works now and the logic is model-agnostic); making the LLM-judge a *gate* (rejected — unvalidated, and it would make the gate model-dependent, contra DR-0012); a floating `gemini-flash-latest` (rejected — pin for reproducibility, DR-0015); native function-calling for the verifier/judge (rejected — JSON-action keeps them identical across backends, DR-0010).
+
+## Consequence
+Wave 2's two deferred layers are built and tested (offline, scripted fakes — no key needed for CI). **First real numbers** require a *paced* run with a working key (manual `eval.yml`, or local). The judge's scores stay **advisory** until a human gold subset (Wave 3 broadens the fixtures from one to ~50). The final architecture — Qwen reasoner + a *stronger* verifier (optionally Claude via the home Max plan) — is a Wave-4 cost/quality comparison. Completes DR-0014; refines DR-0012 and DR-0015.
