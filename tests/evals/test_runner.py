@@ -196,3 +196,35 @@ def test_main_skips_when_backend_unavailable(capsys):
     rc = main(provider=_UnavailableProvider())
     assert rc == 0
     assert "SKIPPED" in capsys.readouterr().err
+
+
+def test_verifier_pass_can_force_abstention_in_eval():
+    # The reasoner proposes the correct cause; the verifier rejects its evidence
+    # -> forced abstention -> the keyword judge fails the scenario.
+    scenario = load_scenario(FIXTURE)
+    reasoner = FakeProvider(list(_CORRECT_SCRIPT))
+    verifier = FakeProvider([json.dumps({"supported": False, "reason": "unrelated"})])
+    r = run_scenario(scenario, reasoner, verifier_provider=verifier)
+    assert r.verifier is not None and r.verifier.forced_abstention
+    assert not r.passed
+
+
+def test_judge_provider_populates_advisory_rubric():
+    # The LLM-judge rubric is recorded but does NOT change the deterministic gate.
+    scenario = load_scenario(FIXTURE)
+    reasoner = FakeProvider(list(_CORRECT_SCRIPT))
+    judgep = FakeProvider(
+        [
+            json.dumps(
+                {
+                    "correct_cause": True,
+                    "evidence_valid": True,
+                    "actions_sensible": True,
+                    "score": 0.9,
+                }
+            )
+        ]
+    )
+    r = run_scenario(scenario, reasoner, judge_provider=judgep)
+    assert r.rubric is not None and r.rubric.passed and r.rubric.score == 0.9
+    assert r.passed  # the keyword judge + fabrication gate still decides
