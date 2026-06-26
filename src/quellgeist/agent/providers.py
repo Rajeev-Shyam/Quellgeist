@@ -55,12 +55,23 @@ class LiteLLMProvider:
         max_retries: int = 4,
         backoff_base: float = 2.0,
         timeout: float = 60.0,
+        min_interval: float | None = None,
     ) -> None:
         self.model = model or DEFAULT_MODEL
         self.temperature = temperature
         self.max_retries = max_retries
         self.backoff_base = backoff_base
         self.timeout = timeout  # per-call ceiling; a hung request raises Timeout
+        # Optional client-side pacing: minimum seconds between calls, so a
+        # multi-call eval (loop + verifier + judge) stays under a free tier's
+        # requests-per-minute ceiling instead of bursting into 429s (DR-0015).
+        # 0 = off (default). Set via QG_MIN_CALL_INTERVAL_S for free-tier runs.
+        self.min_interval = (
+            min_interval
+            if min_interval is not None
+            else float(os.environ.get("QG_MIN_CALL_INTERVAL_S", "0"))
+        )
+        self._last_call = 0.0
 
     def complete(self, messages: list[dict[str, str]]) -> str:
         import random
@@ -73,6 +84,12 @@ class LiteLLMProvider:
             ServiceUnavailableError,
             Timeout,
         )
+
+        if self.min_interval > 0:  # client-side pacing to respect a per-minute cap
+            wait = self.min_interval - (time.monotonic() - self._last_call)
+            if wait > 0:
+                time.sleep(wait)
+        self._last_call = time.monotonic()
 
         retryable = (
             ServiceUnavailableError,
