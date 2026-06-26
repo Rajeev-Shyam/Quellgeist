@@ -27,6 +27,12 @@ jobs:
       # Pin the model explicitly -- never rely on the library default (the bug
       # that silently ran 2.0-flash). Override per-run via the env if desired.
       QG_MODEL: gemini/gemini-3.5-flash
+      # Run the full reliability stack: verifier pass + advisory LLM-judge
+      # (DR-0016), paced under the free-tier RPM so the call sequence doesn't
+      # burst into 429s. An unreachable backend still skips, not fails (DR-0015).
+      QG_VERIFY: "1"
+      QG_JUDGE_LLM: "1"
+      QG_MIN_CALL_INTERVAL_S: "6"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
