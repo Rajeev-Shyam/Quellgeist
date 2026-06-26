@@ -137,3 +137,21 @@ def test_is_provider_unavailable_false_for_real_errors():
         BadRequestError(message="bad", llm_provider="gemini", model="m")
     )
     assert not is_provider_unavailable(ValueError("a real bug"))
+
+
+def test_min_interval_off_by_default(monkeypatch):
+    monkeypatch.delenv("QG_MIN_CALL_INTERVAL_S", raising=False)
+    assert LiteLLMProvider(model="gemini/x").min_interval == 0.0
+
+
+def test_min_interval_sleeps_to_pace_calls(monkeypatch):
+    # With pacing on, a call waits out the remaining interval since the last one,
+    # so a multi-call eval stays under a free-tier RPM cap (DR-0015).
+    sleeps: list[float] = []
+    monkeypatch.setattr(time, "sleep", lambda s: sleeps.append(s))
+    monkeypatch.setattr(time, "monotonic", lambda: 1000.0)  # frozen clock
+    monkeypatch.setattr(litellm, "completion", lambda **k: _ok())
+    p = LiteLLMProvider(model="gemini/x", min_interval=10.0)
+    p._last_call = 996.0  # last call was 4s ago -> must wait the remaining 6s
+    p.complete([{"role": "user", "content": "hi"}])
+    assert sleeps == [6.0]
