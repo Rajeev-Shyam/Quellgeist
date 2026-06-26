@@ -15,18 +15,25 @@ local real-model run.
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from evals.fabrication_check import FabricationResult, check_fabrication
 from evals.judge import JudgeResult, judge
+from evals.llm_judge import RubricVerdict, default_judge_provider, llm_judge
 from evals.scenarios.generator import Scenario, load_scenario
 from quellgeist.agent.loop import LoopResult, ToolSpec, run_loop
 from quellgeist.agent.providers import (
     LiteLLMProvider,
     Provider,
     is_provider_unavailable,
+)
+from quellgeist.agent.verifier import (
+    VerifierResult,
+    default_verifier_provider,
+    verify,
 )
 from quellgeist.servers.filters import filter_log_rows, recent_commits
 
@@ -63,39 +70,83 @@ class EvalResult:
     judge: JudgeResult
     loop: LoopResult
     fabrication: FabricationResult
+    verifier: VerifierResult | None = None  # set when the verifier pass ran
+    rubric: RubricVerdict | None = None  # set when the LLM-judge ran (advisory)
 
     @property
     def passed(self) -> bool:
         """The reliability bar: a judged-correct diagnosis that fabricates
         nothing. A cited-but-nonexistent handle fails the scenario even when the
         judge would otherwise pass it -- zero fabricated causes is the headline
-        guarantee, checked deterministically against the full signal set."""
+        guarantee, checked deterministically against the full signal set. The
+        keyword judge + fabrication check (both keyless) are the gate; the
+        verifier shapes the diagnosis they score, the LLM rubric is advisory only."""
         return self.judge.passed and self.fabrication.ok
 
 
 def run_scenario(
-    scenario: Scenario, provider: Provider, *, max_steps: int = 8
+    scenario: Scenario,
+    provider: Provider,
+    *,
+    verifier_provider: Provider | None = None,
+    judge_provider: Provider | None = None,
+    max_steps: int = 8,
 ) -> EvalResult:
     loop = run_loop(
         provider, scenario_tools(scenario), now=scenario.now, max_steps=max_steps
     )
+    diagnosis = loop.diagnosis
+
+    # Optional verifier pass: confirm cited evidence supports each hypothesis and
+    # force abstention otherwise. The VERIFIED diagnosis is what gets scored.
+    verifier_result: VerifierResult | None = None
+    if verifier_provider is not None:
+        verifier_result = verify(
+            diagnosis, scenario.logs, scenario.commits, verifier_provider
+        )
+        diagnosis = verifier_result.diagnosis
+
+    # Optional LLM-judge (advisory rubric; does not gate -- see EvalResult.passed).
+    rubric: RubricVerdict | None = None
+    if judge_provider is not None:
+        rubric = llm_judge(diagnosis, scenario, judge_provider)
+
     return EvalResult(
         scenario.id,
-        judge(loop.diagnosis, scenario),
+        judge(diagnosis, scenario),
         loop,
-        check_fabrication(loop.diagnosis, scenario.logs, scenario.commits),
+        check_fabrication(diagnosis, scenario.logs, scenario.commits),
+        verifier=verifier_result,
+        rubric=rubric,
     )
 
 
-def run_all(scenarios: list[Scenario], provider: Provider) -> int:
+def run_all(
+    scenarios: list[Scenario],
+    provider: Provider,
+    *,
+    verifier_provider: Provider | None = None,
+    judge_provider: Provider | None = None,
+) -> int:
     passed = fabricating = 0
     for s in scenarios:
-        r = run_scenario(s, provider)
+        r = run_scenario(
+            s,
+            provider,
+            verifier_provider=verifier_provider,
+            judge_provider=judge_provider,
+        )
         mark = "PASS" if r.passed else "FAIL"
         fab = ", ".join(f"{t}:{k}" for t, k in sorted(r.fabrication.fabricated))
+        extra = ""
+        if r.verifier is not None:
+            extra += f", verifier_dropped={len(r.verifier.dropped)}"
+        if r.rubric is not None:
+            verdict = "pass" if r.rubric.passed else "fail"
+            extra += f", rubric={verdict}({r.rubric.score:.2f})"
         print(
             f"[{mark}] {r.scenario_id}: {r.judge.reason} "
-            f"(violations={len(r.loop.schema_violations)}, fabricated={fab or '∅'})"
+            f"(violations={len(r.loop.schema_violations)}, fabricated={fab or '∅'}{extra})"
         )
         passed += r.passed
         fabricating += not r.fabrication.ok
@@ -108,13 +159,29 @@ def _load_all_fixtures() -> list[Scenario]:
     return [load_scenario(p) for p in sorted(FIXTURES.glob("*.json"))]
 
 
-def main(provider: Provider | None = None) -> int:
+def main(
+    provider: Provider | None = None,
+    *,
+    verifier_provider: Provider | None = None,
+    judge_provider: Provider | None = None,
+) -> int:
     scenarios = _load_all_fixtures()
     if not scenarios:
         print("no fixtures found", file=sys.stderr)
         return 1
+    # Opt-in reliability layers, key-gated; model from QG_VERIFIER_MODEL /
+    # QG_JUDGE_MODEL (fall back to QG_MODEL). Off unless explicitly enabled.
+    if verifier_provider is None and os.environ.get("QG_VERIFY") == "1":
+        verifier_provider = default_verifier_provider()
+    if judge_provider is None and os.environ.get("QG_JUDGE_LLM") == "1":
+        judge_provider = default_judge_provider()
     try:
-        return run_all(scenarios, provider or LiteLLMProvider())
+        return run_all(
+            scenarios,
+            provider or LiteLLMProvider(),
+            verifier_provider=verifier_provider,
+            judge_provider=judge_provider,
+        )
     except Exception as exc:
         # An unreachable backend (free-tier quota / 503 / timeout) is a SKIP, not
         # a reliability failure: it must not redden CI (DR-0012). A model that
