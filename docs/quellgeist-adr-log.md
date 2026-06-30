@@ -23,6 +23,7 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0014 | Verifier + LLM-judge: model-agnostic config now, model-coupled logic deferred to stubs pending DR-0012 + the Qwen run | Accepted (provisional) — refines DR-0003/DR-0012 | After the Qwen id-fidelity run |
 | DR-0015 | CI model eval is out-of-band + quota-tolerant (skip≠fail); default model pinned/corrected to gemini-3.5-flash | Accepted (provisional) — refines DR-0012 | After a non-walled key exists |
 | DR-0016 | Verifier + LLM-judge BUILT; gemini-3.5-flash provisional verifier/judge model; free tier viable with client-side pacing; judge advisory | Accepted (provisional) — completes DR-0014, refines DR-0012 | Wave 4 (Qwen reasoner + Claude-verifier) / human gold subset |
+| DR-0017 | Keyword judge `correct_cause` is cite-based, not prose-based (fixes a first-run false-negative); eval reasoner provider = Groq (Gemini free tier unusable from cloud) | Accepted (provisional) — refines DR-0009/DR-0016 | Wave 3 (broader fixtures) |
 
 ---
 
@@ -403,3 +404,19 @@ Waiting for the Qwen run (rejected by decision — Gemini works now and the logi
 
 ## Consequence
 Wave 2's two deferred layers are built and tested (offline, scripted fakes — no key needed for CI). **First real numbers** require a *paced* run with a working key (manual `eval.yml`, or local). The judge's scores stay **advisory** until a human gold subset (Wave 3 broadens the fixtures from one to ~50). The final architecture — Qwen reasoner + a *stronger* verifier (optionally Claude via the home Max plan) — is a Wave-4 cost/quality comparison. Completes DR-0014; refines DR-0012 and DR-0015.
+
+# DR-0017 — Keyword judge `correct_cause` is cite-based, not prose-based (refines DR-0009, DR-0016)
+
+**Status:** Accepted (provisional) · **Date:** 2026-06-30 · **Revisit at:** Wave 3 (broader fixtures + human gold subset)
+
+## Context
+The **first real end-to-end eval run** (full case study: `docs/case-studies/wave2-first-numbers.md`). Two things had to be resolved to even get a run: (a) Gemini's free tier proved **unusable from cloud infra** — 429 → 503 → Timeout → 503 across Actions + a Codespace (DR-0012/0015 made real, four ways); the model-agnostic design let us swap the reasoner to **Groq `llama-3.3-70b-versatile`** with one env var, which completed reliably. (b) That run reported `[FAIL] correct_cause=False` on a diagnosis that was, on reading it, **correct**: cause = "a recent deploy refactored token parsing → `auth.verify_token` fails on NoneType", citing the gold log (2) and the gold commit (`a1b2c3d`), **zero fabrication**. The bug was the judge: `correct_cause` required the gold SHA to appear in the cause **prose** (`sha in top.cause`), but DR-0009's design cites evidence as structured **handles**, not prose — so a correctly-built diagnosis false-failed.
+
+## Decision
+`correct_cause` now checks that the **top hypothesis cites the gold commit(s) as evidence handles** (`gold_shas ⊆ {commit shas cited by the top hypothesis}`), not that the SHA is in the prose. Semantic correctness of the cause *text* is the LLM-judge's concern, not this deterministic gate's. Fixed + regression-tested (a correct, commit-citing diagnosis with no SHA in the prose must score `correct_cause=True`).
+
+## Considered
+Keyword-matching the cause prose against the gold cause (rejected: brittle, and it's the LLM-judge's semantic job); leaving the gate strict and relying on the LLM-judge (rejected: the deterministic gate must not false-fail correct work — it is the keyless reliability gate).
+
+## Consequence
+With the fix the first real diagnosis **passes** (`correct_cause` via citation + `evidence_matches` + zero fabrication). **Also recorded — self-grading caveat:** in that run the LLM-judge was the *same model* as the reasoner (`QG_JUDGE_MODEL` inherited `QG_MODEL`), so its `rubric=1.00` is self-assessment, not independent validation — set `QG_JUDGE_MODEL` to a different/stronger model, and keep rubric scores advisory until a human gold subset (DR-0003). This is the "validate the judge" discipline working: a real run surfaced a judge false-negative, caught by reading the actual diagnosis. Refines DR-0009 and DR-0016.
