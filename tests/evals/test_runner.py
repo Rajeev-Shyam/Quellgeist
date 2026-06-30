@@ -74,6 +74,26 @@ def test_wrong_cause_fails():
     assert not result.judge.correct_cause
 
 
+def test_correct_cause_via_citation_not_prose():
+    """Regression (DR-0017): a correct diagnosis that cites the gold commit as a
+    structured handle but does NOT repeat the sha in the prose must score
+    correct_cause=True. The first real eval run produced exactly this, and the old
+    `sha in cause_text` check false-failed it."""
+    scenario = load_scenario(FIXTURE)
+    provider = FakeProvider(
+        [
+            _diagnose(
+                "A recent deploy refactored token parsing and broke "
+                "auth.verify_token on a NoneType -- no sha in this sentence",
+                [{"type": "log", "id": 2}, {"type": "commit", "sha": "a1b2c3d"}],
+            )
+        ]
+    )
+    result = run_scenario(scenario, provider)
+    assert result.judge.correct_cause  # pinned the gold commit via its handle
+    assert result.judge.passed
+
+
 def test_abstention_fails_the_eval():
     scenario = load_scenario(FIXTURE)
     provider = FakeProvider(
