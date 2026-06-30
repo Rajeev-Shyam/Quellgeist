@@ -146,3 +146,16 @@ def is_provider_unavailable(exc: BaseException) -> bool:
             APIConnectionError,
         ),
     )
+
+
+def is_auth_error(exc: BaseException) -> bool:
+    """True if ``exc`` is a credential failure -- a missing / invalid / expired
+    API key, or permission denied. Distinct from ``is_provider_unavailable`` (a
+    transient outage): the backend could not be *authenticated*, not merely
+    reached. The eval treats it as a SKIP (fix the key/secret), not a reliability
+    failure, so a stale CI secret can't redden a non-gating reporting job
+    (DR-0012/DR-0015). Imported lazily so this module needs no ``litellm`` at
+    import time."""
+    from litellm.exceptions import AuthenticationError, PermissionDeniedError
+
+    return isinstance(exc, (AuthenticationError, PermissionDeniedError))

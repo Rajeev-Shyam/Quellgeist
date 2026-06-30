@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from litellm.exceptions import RateLimitError
+from litellm.exceptions import AuthenticationError, RateLimitError
 
 import evals.run_evals as run_evals
 from evals.run_evals import main, run_all, run_scenario
@@ -216,6 +216,24 @@ def test_main_skips_when_backend_unavailable(capsys):
     rc = main(provider=_UnavailableProvider())
     assert rc == 0
     assert "SKIPPED" in capsys.readouterr().err
+
+
+class _BadKeyProvider:
+    """A backend that rejects the credentials (stale / invalid / rotated key)."""
+
+    def complete(self, messages):
+        raise AuthenticationError(
+            message="API key not valid", llm_provider="gemini", model="gemini/x"
+        )
+
+
+def test_main_skips_on_invalid_credentials(capsys):
+    # A stale/invalid key (e.g. a rotated CI secret) must SKIP (exit 0), not
+    # redden the non-gating reporting job -- it's a config problem, not an eval
+    # failure (DR-0017).
+    rc = main(provider=_BadKeyProvider())
+    assert rc == 0
+    assert "credentials" in capsys.readouterr().err.lower()
 
 
 def test_verifier_pass_can_force_abstention_in_eval():

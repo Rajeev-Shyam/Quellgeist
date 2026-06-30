@@ -8,12 +8,17 @@ from types import SimpleNamespace
 import litellm
 import pytest
 from litellm.exceptions import (
+    AuthenticationError,
     BadRequestError,
     RateLimitError,
     ServiceUnavailableError,
 )
 
-from quellgeist.agent.providers import LiteLLMProvider, is_provider_unavailable
+from quellgeist.agent.providers import (
+    LiteLLMProvider,
+    is_auth_error,
+    is_provider_unavailable,
+)
 
 
 def _ok(text="ok"):
@@ -137,6 +142,25 @@ def test_is_provider_unavailable_false_for_real_errors():
         BadRequestError(message="bad", llm_provider="gemini", model="m")
     )
     assert not is_provider_unavailable(ValueError("a real bug"))
+
+
+def test_is_auth_error_true_for_bad_credentials():
+    # A missing/invalid/expired key (e.g. a stale CI secret) is a credential
+    # failure -> a SKIP for the eval, not a red X.
+    assert is_auth_error(
+        AuthenticationError(
+            message="API key not valid", llm_provider="gemini", model="m"
+        )
+    )
+
+
+def test_is_auth_error_false_for_availability_and_bugs():
+    # An auth error is NOT an availability error and vice-versa; a real bug is
+    # neither and must still surface.
+    assert not is_auth_error(
+        RateLimitError(message="quota", llm_provider="gemini", model="m")
+    )
+    assert not is_auth_error(ValueError("a real bug"))
 
 
 def test_min_interval_off_by_default(monkeypatch):

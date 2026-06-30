@@ -28,6 +28,7 @@ from quellgeist.agent.loop import LoopResult, ToolSpec, run_loop
 from quellgeist.agent.providers import (
     LiteLLMProvider,
     Provider,
+    is_auth_error,
     is_provider_unavailable,
 )
 from quellgeist.agent.verifier import (
@@ -192,6 +193,17 @@ def main(
                 f"SKIPPED: model backend unavailable ({type(exc).__name__}) -- "
                 "quota/availability, not a reliability failure (DR-0012). The "
                 "keyless deterministic gate is the reliability gate.",
+                file=sys.stderr,
+            )
+            return 0
+        if is_auth_error(exc):
+            # A missing / invalid / expired key (e.g. a stale CI secret) is a
+            # credential problem, not an eval failure -- skip, don't redden the
+            # non-gating reporting job (DR-0012/DR-0015). Fix the key/secret.
+            print(
+                f"SKIPPED: model backend rejected the credentials "
+                f"({type(exc).__name__}) -- fix the key/secret. Not a reliability "
+                "failure (DR-0012); the keyless deterministic gate is the gate.",
                 file=sys.stderr,
             )
             return 0
