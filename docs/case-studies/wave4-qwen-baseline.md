@@ -53,8 +53,9 @@ generator-distribution trajectories, never the holdout — DR-0003) has to fix.
 
 ## Notes from the run
 
-- **Cost and latency:** ~0.85 s/call warm; ~7 s/scenario; the full 65-scenario
-  set completed in **7.7 minutes** on a laptop GPU, at **$0**, fully offline
+- **Cost and latency:** the full 65-scenario set completed in **6.8 minutes**
+  (log stamps 21:45:11 → 21:51:58; ~6.3 s/scenario end-to-end, sub-second model
+  calls per the Ollama server log) on a laptop GPU, at **$0**, fully offline
   (WiFi off — nothing in the eval path needs a network). That is the cost side
   of the thesis working; quality is what's missing.
 - **JSON discipline was near-perfect:** 2 scenarios of 81 logged a single
