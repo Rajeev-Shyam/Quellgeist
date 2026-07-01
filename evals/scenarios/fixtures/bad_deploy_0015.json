@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0015",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-14T09:08:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-14T08:56:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-14T08:58:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-14T09:00:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-14T09:02:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in orders.place"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-14T09:02:35Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-14T09:03:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in orders.place"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "f7647b7",
+      "ts": "2026-05-13T07:54:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "5033b3a",
+      "ts": "2026-05-14T09:02:00Z",
+      "msg": "deploy: refactor orders token parsing",
+      "files": [
+        "demo/app/orders.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 5033b3a (09:02:00Z) touched demo/app/orders.py and introduced an error in orders.place; /orders 500s begin ~30s later at 09:02:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "5033b3a"
+    }
+  ]
+}

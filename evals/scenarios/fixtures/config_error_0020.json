@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0020",
+  "failure_class": "config_error",
+  "now": "2026-06-13T13:00:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-13T12:51:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-13T12:53:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-13T12:55:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-13T12:57:30Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'SESSION_TTL' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-13T12:57:35Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-13T12:58:00Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'SESSION_TTL' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-13T12:58:30Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'SESSION_TTL' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "ee362fe",
+      "ts": "2026-06-12T11:04:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "55b7343",
+      "ts": "2026-06-13T12:57:00Z",
+      "msg": "config: rotate SESSION_TTL",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 55b7343 (12:57:00Z) edited config/settings.py (SESSION_TTL) and broke /data; errors begin ~30s later at 12:57:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "55b7343"
+    }
+  ]
+}

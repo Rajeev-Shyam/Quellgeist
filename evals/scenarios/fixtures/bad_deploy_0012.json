@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0012",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-11T09:08:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-11T08:58:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-11T09:00:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-11T09:02:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-11T09:04:15Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in auth.verify_token"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-11T09:04:20Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-11T09:04:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in auth.verify_token"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "44f0957",
+      "ts": "2026-05-10T02:42:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "d35c964",
+      "ts": "2026-05-11T09:04:00Z",
+      "msg": "deploy: rewrite auth handler",
+      "files": [
+        "demo/app/auth.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy d35c964 (09:04:00Z) touched demo/app/auth.py and introduced an error in auth.verify_token; /checkout 500s begin ~15s later at 09:04:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "d35c964"
+    }
+  ]
+}

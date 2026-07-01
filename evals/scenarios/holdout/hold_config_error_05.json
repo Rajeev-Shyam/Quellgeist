@@ -1,0 +1,84 @@
+{
+  "id": "hold_config_error_05",
+  "failure_class": "config_error",
+  "now": "2026-05-11T11:31:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-11T11:20:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-11T11:22:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-11T11:24:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-11T11:26:15Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "TypeError: int() argument must be a string for PAGE_SIZE"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-11T11:26:20Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-11T11:26:30Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "TypeError: int() argument must be a string for PAGE_SIZE"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "4b29e48",
+      "ts": "2026-05-10T05:09:00Z",
+      "msg": "docs: fix changelog",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "f2d3634",
+      "ts": "2026-05-11T11:26:00Z",
+      "msg": "chore: adjust PAGE_SIZE for scale",
+      "files": [
+        "conf/app.toml"
+      ]
+    }
+  ],
+  "gold_cause": "Config change f2d3634 (11:26:00Z) edited conf/app.toml (PAGE_SIZE) and broke /search; errors begin ~15s later at 11:26:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "f2d3634"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0015",
+  "failure_class": "config_error",
+  "now": "2026-06-08T12:27:20Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-08T12:14:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-08T12:16:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-08T12:18:20Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-08T12:18:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-08T12:18:40Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-08T12:19:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-08T12:19:20Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "9cd5cde",
+      "ts": "2026-06-07T04:26:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "605ee6b",
+      "ts": "2026-06-08T12:18:00Z",
+      "msg": "chore: update DATABASE_URL for prod",
+      "files": [
+        "app/config.yaml"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 605ee6b (12:18:00Z) edited app/config.yaml (DATABASE_URL) and broke /orders; errors begin ~20s later at 12:18:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "605ee6b"
+    }
+  ]
+}

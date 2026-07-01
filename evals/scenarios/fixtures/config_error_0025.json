@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0025",
+  "failure_class": "config_error",
+  "now": "2026-06-18T12:43:15Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-18T12:30:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-18T12:32:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-18T12:34:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-18T12:36:45Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var STRIPE_KEY"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-18T12:36:50Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-18T12:37:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var STRIPE_KEY"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-18T12:38:15Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var STRIPE_KEY"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "aab9eb5",
+      "ts": "2026-06-17T04:03:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "ce836f3",
+      "ts": "2026-06-18T12:36:00Z",
+      "msg": "chore: update STRIPE_KEY for prod",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change ce836f3 (12:36:00Z) edited config/settings.py (STRIPE_KEY) and broke /checkout; errors begin ~45s later at 12:36:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "ce836f3"
+    }
+  ]
+}

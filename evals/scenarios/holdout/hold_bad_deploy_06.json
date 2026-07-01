@@ -1,0 +1,76 @@
+{
+  "id": "hold_bad_deploy_06",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-06T11:32:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-06T11:23:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-06T11:25:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-06T11:27:30Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in queue.enqueue"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-06T11:27:35Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-06T11:28:00Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in queue.enqueue"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "dbb562f",
+      "ts": "2026-05-05T10:47:00Z",
+      "msg": "refactor: rename helpers",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "207d308",
+      "ts": "2026-05-06T11:27:00Z",
+      "msg": "deploy: inline queue cache",
+      "files": [
+        "demo/app/queue.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 207d308 (11:27:00Z) touched demo/app/queue.py and introduced an error in queue.enqueue; /report 500s begin ~30s later at 11:27:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "207d308"
+    }
+  ]
+}

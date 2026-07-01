@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0021",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-20T10:54:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-20T10:46:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-20T10:48:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-20T10:50:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-20T10:52:15Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in auth.verify_token"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-20T10:52:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-20T10:52:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in auth.verify_token"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "ce53d17",
+      "ts": "2026-05-19T07:54:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "68eb5bc",
+      "ts": "2026-05-20T10:52:00Z",
+      "msg": "deploy: refactor auth token parsing",
+      "files": [
+        "demo/app/auth.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 68eb5bc (10:52:00Z) touched demo/app/auth.py and introduced an error in auth.verify_token; /checkout 500s begin ~15s later at 10:52:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "68eb5bc"
+    }
+  ]
+}

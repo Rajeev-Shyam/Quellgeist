@@ -1,0 +1,76 @@
+{
+  "id": "hold_bad_deploy_02",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-02T10:55:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-02T10:48:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-02T10:50:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-02T10:52:30Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not iterable in report.render"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-02T10:52:35Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-02T10:53:00Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not iterable in report.render"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "be316f4",
+      "ts": "2026-05-01T03:03:00Z",
+      "msg": "docs: fix changelog",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "bd39abf",
+      "ts": "2026-05-02T10:52:00Z",
+      "msg": "deploy: inline report cache",
+      "files": [
+        "demo/app/report.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy bd39abf (10:52:00Z) touched demo/app/report.py and introduced an error in report.render; /report 500s begin ~30s later at 10:52:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "bd39abf"
+    }
+  ]
+}

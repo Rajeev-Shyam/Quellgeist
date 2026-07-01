@@ -1,0 +1,84 @@
+{
+  "id": "config_error_0009",
+  "failure_class": "config_error",
+  "now": "2026-06-02T08:27:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-02T08:19:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-02T08:21:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-02T08:23:20Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for MAX_CONNECTIONS"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-02T08:23:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-02T08:23:40Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for MAX_CONNECTIONS"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-02T08:24:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for MAX_CONNECTIONS"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "3763de8",
+      "ts": "2026-06-01T03:28:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "d03f13b",
+      "ts": "2026-06-02T08:23:00Z",
+      "msg": "config: change MAX_CONNECTIONS default",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change d03f13b (08:23:00Z) edited .env (MAX_CONNECTIONS) and broke /orders; errors begin ~20s later at 08:23:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "d03f13b"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0010",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-09T08:51:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-09T08:42:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-09T08:44:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-09T08:46:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-09T08:48:15Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in cart.total"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-09T08:48:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-09T08:48:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in cart.total"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "fc77056",
+      "ts": "2026-05-08T02:14:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "150b70f",
+      "ts": "2026-05-09T08:48:00Z",
+      "msg": "deploy: optimise cart hot path",
+      "files": [
+        "demo/app/cart.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 150b70f (08:48:00Z) touched demo/app/cart.py and introduced an error in cart.total; /checkout 500s begin ~15s later at 08:48:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "150b70f"
+    }
+  ]
+}

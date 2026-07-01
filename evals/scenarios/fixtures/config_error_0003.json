@@ -1,0 +1,76 @@
+{
+  "id": "config_error_0003",
+  "failure_class": "config_error",
+  "now": "2026-05-27T12:28:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-27T12:18:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-27T12:20:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-27T12:22:15Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'MAX_CONNECTIONS' not set"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-27T12:22:20Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-27T12:22:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'MAX_CONNECTIONS' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "3258046",
+      "ts": "2026-05-26T05:52:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "5c75b7a",
+      "ts": "2026-05-27T12:22:00Z",
+      "msg": "config: change MAX_CONNECTIONS default",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 5c75b7a (12:22:00Z) edited config/settings.py (MAX_CONNECTIONS) and broke /orders; errors begin ~15s later at 12:22:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "5c75b7a"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "id": "hold_config_error_02",
+  "failure_class": "config_error",
+  "now": "2026-05-08T11:15:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-08T11:03:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-08T11:05:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-08T11:07:20Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "environment variable SMTP_HOST is undefined"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-08T11:07:25Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-08T11:07:40Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "environment variable SMTP_HOST is undefined"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "1069b9c",
+      "ts": "2026-05-07T10:58:00Z",
+      "msg": "docs: fix changelog",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "c4bd8d9",
+      "ts": "2026-05-08T11:07:00Z",
+      "msg": "config: swap SMTP_HOST provider",
+      "files": [
+        "conf/app.toml"
+      ]
+    }
+  ],
+  "gold_cause": "Config change c4bd8d9 (11:07:00Z) edited conf/app.toml (SMTP_HOST) and broke /search; errors begin ~20s later at 11:07:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "c4bd8d9"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0022",
+  "failure_class": "config_error",
+  "now": "2026-06-15T10:16:45Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-15T10:07:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-15T10:09:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-15T10:11:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-15T10:13:15Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "missing required env var SESSION_TTL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-15T10:13:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-15T10:13:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "missing required env var SESSION_TTL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-15T10:13:45Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "missing required env var SESSION_TTL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "ea1f555",
+      "ts": "2026-06-14T00:23:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "afb0691",
+      "ts": "2026-06-15T10:13:00Z",
+      "msg": "config: change SESSION_TTL default",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change afb0691 (10:13:00Z) edited config/settings.py (SESSION_TTL) and broke /login; errors begin ~15s later at 10:13:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "afb0691"
+    }
+  ]
+}

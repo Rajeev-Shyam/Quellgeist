@@ -1,0 +1,100 @@
+{
+  "id": "config_error_0014",
+  "failure_class": "config_error",
+  "now": "2026-06-07T10:15:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-07T10:02:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-07T10:04:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-07T10:06:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-07T10:08:45Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-07T10:08:50Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-07T10:09:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-07T10:10:15Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    },
+    {
+      "id": 7,
+      "ts": "2026-06-07T10:11:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "a3bb753",
+      "ts": "2026-06-06T01:38:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "d9a12b9",
+      "ts": "2026-06-07T10:08:00Z",
+      "msg": "chore: update REDIS_HOST for prod",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change d9a12b9 (10:08:00Z) edited .env (REDIS_HOST) and broke /orders; errors begin ~45s later at 10:08:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "d9a12b9"
+    }
+  ]
+}

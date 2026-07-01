@@ -1,0 +1,84 @@
+{
+  "id": "hold_bad_deploy_03",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-03T11:50:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-03T11:36:00Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-03T11:38:00Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-03T11:40:00Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-03T11:42:15Z",
+      "level": "ERROR",
+      "route": "/upload",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in upload.store"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-03T11:42:20Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-03T11:42:30Z",
+      "level": "ERROR",
+      "route": "/upload",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in upload.store"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "3f73c22",
+      "ts": "2026-05-02T03:12:00Z",
+      "msg": "refactor: rename helpers",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "a26d74b",
+      "ts": "2026-05-03T11:42:00Z",
+      "msg": "deploy: migrate upload backend",
+      "files": [
+        "demo/app/upload.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy a26d74b (11:42:00Z) touched demo/app/upload.py and introduced an error in upload.store; /upload 500s begin ~15s later at 11:42:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "a26d74b"
+    }
+  ]
+}

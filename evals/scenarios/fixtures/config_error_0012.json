@@ -1,0 +1,84 @@
+{
+  "id": "config_error_0012",
+  "failure_class": "config_error",
+  "now": "2026-06-05T08:41:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-05T08:29:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-05T08:31:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-05T08:33:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-05T08:35:45Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var MAX_CONNECTIONS"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-05T08:35:50Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-05T08:36:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var MAX_CONNECTIONS"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "c83162c",
+      "ts": "2026-06-04T01:38:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "21286c0",
+      "ts": "2026-06-05T08:35:00Z",
+      "msg": "chore: update MAX_CONNECTIONS for prod",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 21286c0 (08:35:00Z) edited config/settings.py (MAX_CONNECTIONS) and broke /orders; errors begin ~45s later at 08:35:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "21286c0"
+    }
+  ]
+}

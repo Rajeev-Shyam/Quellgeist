@@ -1,0 +1,92 @@
+{
+  "id": "bad_deploy_0017",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-16T11:21:45Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-16T11:12:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-16T11:14:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-16T11:16:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-16T11:18:15Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in orders.place"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-16T11:18:20Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-16T11:18:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in orders.place"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-16T11:18:45Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in orders.place"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "eac94de",
+      "ts": "2026-05-15T08:00:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "de89683",
+      "ts": "2026-05-16T11:18:00Z",
+      "msg": "deploy: rewrite orders handler",
+      "files": [
+        "demo/app/orders.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy de89683 (11:18:00Z) touched demo/app/orders.py and introduced an error in orders.place; /orders 500s begin ~15s later at 11:18:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "de89683"
+    }
+  ]
+}

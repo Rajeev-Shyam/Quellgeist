@@ -1,0 +1,100 @@
+{
+  "id": "hold_config_error_03",
+  "failure_class": "config_error",
+  "now": "2026-05-09T09:04:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-09T08:51:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-09T08:53:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-09T08:55:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-09T08:57:15Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "KeyError: 'SMTP_HOST' missing from config"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-09T08:57:20Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-09T08:57:30Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "KeyError: 'SMTP_HOST' missing from config"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-09T08:57:45Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "KeyError: 'SMTP_HOST' missing from config"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-09T08:58:00Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "KeyError: 'SMTP_HOST' missing from config"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "9d5e2bf",
+      "ts": "2026-05-08T06:11:00Z",
+      "msg": "ci: cache dependencies",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "b061259",
+      "ts": "2026-05-09T08:57:00Z",
+      "msg": "config: swap SMTP_HOST provider",
+      "files": [
+        "conf/app.toml"
+      ]
+    }
+  ],
+  "gold_cause": "Config change b061259 (08:57:00Z) edited conf/app.toml (SMTP_HOST) and broke /report; errors begin ~15s later at 08:57:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "b061259"
+    }
+  ]
+}

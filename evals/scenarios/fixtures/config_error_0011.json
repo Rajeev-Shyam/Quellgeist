@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0011",
+  "failure_class": "config_error",
+  "now": "2026-06-04T11:13:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-04T11:00:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-04T11:02:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-04T11:04:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-04T11:06:20Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-04T11:06:25Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-04T11:06:40Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-04T11:07:00Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "3e3bda4",
+      "ts": "2026-06-03T06:18:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "32336f4",
+      "ts": "2026-06-04T11:06:00Z",
+      "msg": "config: change DATABASE_URL default",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 32336f4 (11:06:00Z) edited config/settings.py (DATABASE_URL) and broke /data; errors begin ~20s later at 11:06:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "32336f4"
+    }
+  ]
+}

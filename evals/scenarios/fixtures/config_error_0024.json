@@ -1,0 +1,100 @@
+{
+  "id": "config_error_0024",
+  "failure_class": "config_error",
+  "now": "2026-06-17T11:51:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-17T11:36:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-17T11:38:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-17T11:40:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-17T11:42:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-17T11:42:35Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-17T11:43:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-17T11:43:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 7,
+      "ts": "2026-06-17T11:44:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "bced480",
+      "ts": "2026-06-16T08:23:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "4e50e08",
+      "ts": "2026-06-17T11:42:00Z",
+      "msg": "config: change DATABASE_URL default",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 4e50e08 (11:42:00Z) edited .env (DATABASE_URL) and broke /checkout; errors begin ~30s later at 11:42:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "4e50e08"
+    }
+  ]
+}

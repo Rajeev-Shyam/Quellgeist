@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0013",
+  "failure_class": "config_error",
+  "now": "2026-06-06T11:59:20Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-06T11:47:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-06T11:49:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-06T11:51:20Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-06T11:51:25Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-06T11:51:40Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-06T11:52:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-06T11:52:20Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "89b7745",
+      "ts": "2026-06-05T04:51:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "f951532",
+      "ts": "2026-06-06T11:51:00Z",
+      "msg": "chore: update REDIS_HOST for prod",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change f951532 (11:51:00Z) edited .env (REDIS_HOST) and broke /orders; errors begin ~20s later at 11:51:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "f951532"
+    }
+  ]
+}
