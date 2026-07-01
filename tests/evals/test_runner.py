@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from litellm.exceptions import AuthenticationError, RateLimitError
 
 import evals.run_evals as run_evals
@@ -18,6 +19,14 @@ FIXTURE = (
     / "fixtures"
     / "bad_deploy_0001.json"
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_scenarios_dir(monkeypatch):
+    """_load_all_fixtures reads QG_SCENARIOS_DIR; an ambient value left over
+    from a holdout run (or pointing at a dir that doesn't resolve from the
+    pytest cwd) must not redirect or empty these tests' corpus."""
+    monkeypatch.delenv("QG_SCENARIOS_DIR", raising=False)
 
 
 class FakeProvider:
@@ -221,15 +230,21 @@ def test_run_all_returns_one_on_fabrication(capsys):
 
 def test_scenarios_dir_env_selects_the_holdout_set(monkeypatch):
     """QG_SCENARIOS_DIR redirects the run to another scenario set -- the
-    explicit opt-in for the reserved different-distribution holdout (DR-0003),
-    which the default fixtures glob must never touch."""
+    explicit opt-in for the reserved different-distribution holdout (DR-0003)."""
     holdout = Path(__file__).parents[2] / "evals" / "scenarios" / "holdout"
     monkeypatch.setenv("QG_SCENARIOS_DIR", str(holdout))
     scenarios = run_evals._load_all_fixtures()
     assert len(scenarios) == 16  # the reserved set, pinned by test_generator
-    assert {s.id for s in scenarios}.isdisjoint(
-        {p.stem for p in (holdout.parent / "fixtures").glob("*.json")}
-    )
+    assert all(s.id.startswith("hold_") for s in scenarios)
+
+
+def test_default_glob_never_loads_the_holdout():
+    """With QG_SCENARIOS_DIR unset (the autouse scrub guarantees it), the
+    default load is the fixtures distribution only -- the holdout must stay
+    untouched unless selected explicitly (DR-0003)."""
+    scenarios = run_evals._load_all_fixtures()
+    assert scenarios  # the fixtures corpus, not an empty glob
+    assert not any(s.id.startswith("hold_") for s in scenarios)
 
 
 def test_main_offline_returns_zero(monkeypatch):
