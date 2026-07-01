@@ -22,6 +22,7 @@ from quellgeist.agent.providers import LiteLLMProvider, Provider
 from quellgeist.output.postmortem import render_postmortem, write_postmortem
 from quellgeist.servers.commits_mcp import get_recent_commits
 from quellgeist.servers.logs_mcp import query_logs
+from quellgeist.servers.metrics_mcp import query_metrics
 
 _TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -43,6 +44,13 @@ def _make_tools() -> list[ToolSpec]:
             "List recent deploys newest-first; optional since/limit; returns "
             "commits with sha, ts, msg, files.",
             get_recent_commits,
+        ),
+        ToolSpec(
+            "query_metrics",
+            "Query metric time-series (memory/connections/queue depth) for "
+            "resource incidents; optional name/since; each series carries a "
+            "`metric` name (cite it), `unit`, and `points`.",
+            query_metrics,
         ),
     ]
 
