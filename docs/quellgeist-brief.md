@@ -6,7 +6,7 @@
 
 ## 1. Summary
 
-Quellgeist is an open-source AI agent that performs the first-line diagnosis of a production incident. On a trigger, it gathers evidence from structured logs, Prometheus-style metrics, and recent git/deploy history (each via MCP), correlates the signals, and produces a confidence-ranked set of root-cause hypotheses — each backed by cited evidence — plus suggested next actions, rendered as a templated postmortem. It is model-agnostic: a **fine-tuned Qwen3-4B** does the routine reasoning for cost efficiency, and a **stronger "verifier" model** (default: Gemini's free API tier — note that a Claude Max plan is the app subscription, not a programmatic API; Claude/others are swappable if API credit is added later) confirms the evidence supports each claim and forces abstention when it doesn't. Reliability is proven, not asserted: the repo ships a deliberately-breakable demo stack and a ~50-scenario eval suite that runs in CI on every push.
+Quellgeist is an open-source AI agent that performs the first-line diagnosis of a production incident. On a trigger, it gathers evidence from structured logs, Prometheus-style metrics, and recent git/deploy history (each via MCP), correlates the signals, and produces a confidence-ranked set of root-cause hypotheses — each backed by cited evidence — plus suggested next actions, rendered as a templated postmortem. It is model-agnostic: a **fine-tuned Qwen3-4B** does the routine reasoning for cost efficiency, and a **stronger "verifier" model** (default: Gemini's free API tier — note that a Claude Max plan is the app subscription, not a programmatic API; Claude/others are swappable if API credit is added later) confirms the evidence supports each claim and forces abstention when it doesn't. Reliability is proven, not asserted: the repo ships a deliberately-breakable demo stack and a parameterised eval suite (~50 scenarios, target). A **keyless deterministic gate** (lint + tests + the fabrication check) runs on every push; the **model-driven eval runs out-of-band and key-gated** (manual + merges to `main`), so free-tier flakiness never reddens a PR (DR-0015/DR-0017).
 
 ---
 
@@ -77,7 +77,7 @@ output: templated postmortem to stdout + an HTML/Markdown file (ranked hypothese
 - Interaction: **one-shot** diagnosis.
 - A **breakable demo stack** with one-command failure injection + reset (runs in Codespaces).
 - An **eval suite** (~50 scenarios via parameterised failure injection) with LLM-as-judge scoring on a rubric, a human-validated gold subset, and a deterministic fabrication check.
-- **Evals run in GitHub Actions on every push**, publishing a reliability report/badge.
+- **CI split (DR-0015/DR-0017):** a keyless deterministic gate runs on every push; the model-driven eval runs **out-of-band** (manual + merges to `main`) and key-gated. A public reliability report/badge follows once real numbers exist.
 - **Distribution:** official MCP Registry publish + CI auto-publish for the custom server(s); v1 launch via GitHub + community channels (§12).
 - **CLI as the single core**; postmortems **rendered to an HTML/Markdown file** (no live web app in v1); a **thin, optional webhook** reusing the CLI core.
 - **Stretch (cut first if time tightens):** sandbox **resolution-verification loop** — after a controlled fix, re-read signals to confirm recovery. No autonomous prod mutation.
@@ -116,7 +116,7 @@ output: templated postmortem to stdout + an HTML/Markdown file (ranked hypothese
 | 24 | Interaction | One-shot | Lowest build, fits scope |
 | 25 | Past diagnosis | Sandbox resolution-verification loop (stretch, cut-first) | Strong differentiator but heaviest feature |
 | 26 | Licence | MIT | Max adoption |
-| 27 | CI evals | GitHub Actions every push + public badge | Visible reliability signal |
+| 27 | CI evals | Keyless deterministic gate every push; model eval out-of-band + key-gated (DR-0015/DR-0017); public badge once numbers exist | Visible reliability signal without free-tier flakiness gating PRs |
 | 28 | Fine-tuning timing | In v1; trained on own scenario data | Cost thesis central; data synergy with eval generator |
 | 29 | Reasoning model | **Qwen3-4B**; escalation **Qwen3-8B** (confirmed at the Wave 0 gate — see DR-0008) | Proven end-to-end on free T4; Apache-2.0; mature 4-bit QLoRA; strong tool-calling; toggleable thinking mode |
 | 30 | Fine-tune compute | **Hybrid:** local PoC + serving on RTX 5060 (8GB); real training runs on cloud GPU (Modal default, Vast.ai cheaper) | 8GB serves a 4-bit 4B fine but is tight for training iteration |
@@ -142,7 +142,7 @@ The centre of gravity of the project (priority #1).
 - **Scenario generation.** Parameterised failure injection: a few templates per class, varied across parameters (module, timing, log verbosity, concurrent noise) to generate ~50 labelled scenarios. Each = an injected failure + the resulting logs/metrics/git state + a labelled correct cause.
 - **Scoring.** LLM-as-judge against a rubric (correct cause #1? evidence valid? actions sensible?), **validated against a human-labelled gold subset** so the judge itself is trusted.
 - **Headline guarantee.** A *deterministic* fabrication check: every cited piece of evidence must exist in the real signals. With the verifier pass + abstention, target **zero confidently-stated fabricated causes** — the agent says "insufficient evidence" rather than invents.
-- **CI.** The eval suite runs in GitHub Actions on every push; results published as a report/badge.
+- **CI.** A keyless deterministic gate (lint + tests + the fabrication check) runs on every push; the model-driven eval runs **out-of-band** (manual `workflow_dispatch` + merges to `main`) and is key-gated, and treats an unreachable backend or a rejected credential as a **skip, not a failure** (DR-0015/DR-0017) — so a free-tier quota/credential hiccup never reddens a PR. A public report/badge follows once real numbers exist.
 
 **Reliability metrics (set concrete bars after a baseline run):** correct cause ranked #1 in a high majority of scenarios (e.g. ≥ 80%); zero fabricated-cause failures; judge–human agreement above an acceptable threshold on the gold subset.
 
@@ -194,9 +194,9 @@ Registries list **MCP servers**; Quellgeist is mainly an **agent that consumes s
 ## 13. Build Sequence (high-level — see the Rolling Wave plan for detail)
 
 1. **Wave 0 spike (done):** confirmed a 4B can orchestrate the loop; default reasoner = Qwen3-4B (escalation Qwen3-8B) — see DR-0008.
-2. **Wave 1:** thin vertical slice — bad-deploy diagnosis end-to-end + eval/CI skeleton.
-3. **Wave 2:** reliability core — verifier pass + fabrication check + abstention + judge validation.
-4. **Wave 3:** breadth — classes 2 & 3 + metrics; ~50 scenarios.
+2. **Wave 1 (done):** thin vertical slice — bad-deploy diagnosis end-to-end + eval/CI skeleton.
+3. **Wave 2 (built):** reliability core — verifier pass + fabrication check + abstention + LLM-judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation (a human gold subset) + a reliability *rate* carry into Wave 3.
+4. **Wave 3 (current):** breadth — classes 2 & 3 + metrics; parameterised generation toward ~50 scenarios.
 5. **Wave 4:** cost/fine-tune (local PoC → cloud training → comparison).
 6. **Wave 5:** polish & ship — postmortem file render, docs, case study, security pass, registry + CI, launch.
 7. **Wave 6 (cut-first):** resolution-verification loop.

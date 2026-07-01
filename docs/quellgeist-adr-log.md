@@ -307,7 +307,7 @@ model-agnosticism across Gemini and local 4-bit Qwen; legibility; keeps the dete
 MCP-over-the-wire not yet demonstrated; cited_but_unseen is a run-scoped proxy, not the real check; provider retry rescues transient failures only. Refines DR-0006; revisit Wave 2.
 
 
-# DR-0012 — Verifier / free-tier reality (refines DR-0003)
+# DR-0011 — Commits evidence source
 
 ##  Decision
 ship a thin custom commits MCP server (get_recent_commits over demo/deploy_log.json) rather than reuse the real GitHub MCP.
@@ -318,7 +318,7 @@ GitHub's official API server (needs PAT + network + real pushed commits — coll
 ## Rationale
 the plan sanctioned the deploy_log.json path; keeps the demo reproducible, offline, token-free; the loop stays tool-agnostic so the real GitHub MCP is a clean post-v1 adapter. Refines DR-0006; revisit at Wave 5.
 
-# DR-0011 — Commits evidence source
+# DR-0012 — Verifier / free-tier reality (refines DR-0003)
 
 ##   Finding (web-verified, 2026)
  a Gemini API key on an unvalidated, no-billing project returns 429 limit:0 on current models — Google gates the real free allowance behind account validation (linking a billing account; $0 within free limits but a card is required).

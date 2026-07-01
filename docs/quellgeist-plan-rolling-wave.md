@@ -171,7 +171,17 @@ quellgeist/
 - **Still open (block the *numbers*, not the build):** a **paced real run with a working key** to produce the first numbers (free tier viable with `QG_MIN_CALL_INTERVAL_S`, DR-0016); a **human-labelled gold subset** before the LLM-judge's scores are trusted; the **Qwen3-4B id-fidelity run** (the final reasoner; gemini-3.5-flash is the build/CI stand-in). Until a real run lands, **no real-model reliability numbers are quoted.**
 
 **Key design constraint (from review):** keep the eval's *held-out* scenarios separate from anything used to tune prompts/model — see Wave 4 note on train/eval separation.
-**Exit criteria:** on the bad-deploy class, correct cause #1 in a high majority of runs, **zero fabricated causes on the eval set**, validated judge. *(Unmet: gated on the Qwen run + verifier/judge build + judge validation.)*
+**Exit criteria:** on the bad-deploy class, correct cause #1 in a high majority of runs, **zero fabricated causes on the eval set**, validated judge. *(Build done — deterministic gate + verifier + LLM-judge all shipped; the first real run on Groq passed with zero fabrication, DR-0017. Still unmet and carried into Wave 3: a **validated judge** (human gold subset, judge ≠ reasoner) and a **measured reliability rate** across the ~50-scenario suite — one fixture is a smoke test, not a rate. The Qwen3-4B id-fidelity run against this harness also remains open.)*
+
+### Wave 2 → Wave 3 boundary review (2026-07-01)
+
+Ran the *Wave Review Checklist* (below) at the boundary:
+
+- **What this wave taught us that changes downstream:** the model-agnostic design earned its keep — Gemini's free tier proved unusable from cloud CI (429 → 503 → timeout → invalid-key), and a one-env-var swap to Groq `llama-3.3-70b-versatile` produced the first real **PASS** with zero fabrication. Reading the *actual* diagnosis (not the score) caught a judge false-negative → DR-0017. Downstream effect: the LLM-judge stays advisory until a human gold subset exists, and Wave 3's first job (parameterised generation) is what unblocks the rate, the gold subset, and the judge validation.
+- **Docs brought current (this review):** the README (was "Wave 1 / 44 tests / Wave 2 deferred") and the brief's "evals on every push" language were stale relative to the merged Wave 2 build + DR-0015/DR-0017; both synced. The ADR log's DR-0011/DR-0012 body-header transposition (labels swapped relative to the index) was corrected.
+- **Cut/defer check:** no scope cut this boundary; Wave 6 (resolution-verification) remains the cut-first item.
+- **Decisions unchanged:** no locked decision changed at this boundary, so no new DR was opened for the sync — DR-0008 (Qwen default), DR-0009/DR-0013 (handles + fabrication check), DR-0016 (verifier/judge built), and DR-0017 (cite-based judge + Groq in CI) all still hold. Next id remains **DR-0018**.
+- **Next wave:** Wave 3's objective + rough tasks are below; they get re-scoped to full task/step detail at Wave 3 kickoff (the immediate next step). **Start with parameterised scenario generation** (`generator.py::generate_scenarios`) — it unblocks the reliability rate, the human gold subset, and the judge validation. Keep the train/eval **distribution-separation** constraint (DR-0003) front-and-centre from the first generated fixture, and build the held-out set (`evals/scenarios/holdout/`) from a *different* distribution than the tuning set.
 
 ## Wave 3 — Breadth: Classes 2 & 3 + Metrics *(rolling)*
 

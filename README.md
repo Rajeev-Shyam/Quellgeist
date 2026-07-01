@@ -14,21 +14,25 @@ root-cause hypotheses, each backed by a structured evidence handle
 ideas set it apart:
 
 - **Cite-by-structured-handle.** Evidence is a checkable handle, not a sentence,
-  so a fabricated citation is *measurable* (and, from Wave 2, deterministically
-  rejectable) rather than a matter of fuzzy string-matching.
+  so a fabricated citation is *measurable* and **deterministically rejected** by a
+  keyless fabrication check — not a matter of fuzzy string-matching.
 - **Abstain-over-hallucinate.** A confidently-stated wrong cause is the worst
   possible answer, so *"insufficient evidence"* is a first-class outcome.
 
-> **Status: WIP — Wave 1 (bad-deploy vertical slice).** The spine works
-> end-to-end and is unit-tested; the loop currently *measures* citation fidelity
-> (`cited_but_unseen`). Deterministic *enforcement* (a verifier pass + a
-> fabrication check) is Wave 2. See [Status & roadmap](#status--roadmap).
+> **Status: WIP — Wave 2 complete (reliability core); entering Wave 3 (breadth).**
+> The bad-deploy slice runs end-to-end and is unit-tested, and the reliability
+> core is built: a deterministic, keyless **fabrication check** + a cite-based
+> judge gate the eval, with an opt-in **verifier pass** (forces abstention when
+> the evidence doesn't support a cause) and an advisory **LLM-judge** layered on
+> top. The first real end-to-end run passed with **zero fabrication** — but that
+> is *one fixture*, a smoke test, not a reliability *rate* yet (Wave 3 turns one
+> fixture into ~50). See [Status & roadmap](#status--roadmap).
 
 ## Why it's different
 
 | | |
 |---|---|
-| **Evidence is a handle** | Each hypothesis cites a log row's source-stable `id` or a commit `sha`, copied verbatim from a tool result — the unit the (Wave 2) fabrication check looks up. Prose lives in a display-only `note`. (DR-0009) |
+| **Evidence is a handle** | Each hypothesis cites a log row's source-stable `id` or a commit `sha`, copied verbatim from a tool result — the unit the deterministic fabrication check looks up. Prose lives in a display-only `note`. (DR-0009) |
 | **Abstention is a feature** | When signals are weak the agent returns `abstained=true` with a reason and an empty hypotheses list — enforced by the schema. |
 | **Model-agnostic by construction** | The loop parses JSON actions from plain chat text, so it's identical on Gemini's free tier and a local 4-bit Qwen — no dependence on any backend's native function-calling. Swap models with one config change. (DR-0008, DR-0010) |
 | **Reliability is gated, not asserted** | A keyless, deterministic CI gate (ruff + black + `pytest`, including the fixture-backed eval harness) runs on every push. |
@@ -81,7 +85,7 @@ flowchart TD
 ```
 
 Both tools are also exposed as **MCP servers** over stdio
-(`python -m quellgeist.servers.logs_mcp`, `…commits_mcp`). In Wave 1 the agent
+(`python -m quellgeist.servers.logs_mcp`, `…commits_mcp`). The agent currently
 reuses the same tool *functions* in-process behind a `ToolSpec` registry; a
 stdio MCP-*client* path (the agent driving the servers over the wire) is on the
 roadmap (DR-0010).
@@ -153,8 +157,9 @@ uv run quellgeist diagnose --show-trace
 
 Heads-up (DR-0012): a Gemini key on an unvalidated, no-billing project returns
 `429 limit: 0` on current models, so the shipped CI gate is deliberately
-**keyless** and model-driven evals are key-gated for Wave 2. At home the intended
-default reasoner is a local **Qwen3-4B** via Ollama (DR-0008).
+**keyless** and model-driven evals are key-gated and run **out-of-band**
+(DR-0015). At home the intended default reasoner is a local **Qwen3-4B** via
+Ollama (DR-0008).
 
 ### Running the eval (reasoner + verifier + LLM-judge)
 
@@ -172,9 +177,17 @@ QG_MIN_CALL_INTERVAL_S=6 \      # pace calls under the free-tier RPM (avoids 429
 ```
 
 `QG_VERIFIER_MODEL` / `QG_JUDGE_MODEL` override the model per layer (default
-`QG_MODEL`). An unreachable backend (quota/503) is reported as a **skip**, not a
-failure (DR-0015). The LLM-judge's scores are **advisory** until validated against
-a human-labelled gold subset.
+`QG_MODEL`). An unreachable backend (quota/503/timeout) **or** a rejected
+credential (missing/invalid/stale key) is reported as a **skip**, not a failure
+(DR-0015/DR-0017), so the out-of-band eval never reddens on a free-tier hiccup.
+The LLM-judge's scores are **advisory** until validated against a human-labelled
+gold subset — and are self-grading whenever `QG_JUDGE_MODEL` equals the reasoner.
+
+> **CI's out-of-band eval runs on Groq** (`groq/llama-3.3-70b-versatile`, gated on
+> `GROQ_API_KEY`): Gemini's free tier proved unusable from cloud CI (429 → 503 →
+> timeout → invalid-key), so the reasoner was swapped with one env var — the
+> model-agnostic thesis in action (DR-0017). The intended *home* default remains a
+> local Qwen3-4B (DR-0008).
 
 ## Status & roadmap
 
@@ -186,21 +199,22 @@ The full decision history lives in the
 | Wave | Scope | Status |
 |---|---|---|
 | 0 | De-risk the model bet (4B can orchestrate the loop) | ✅ done — default = Qwen3-4B (DR-0008) |
-| **1** | **Bad-deploy slice: demo → break → diagnose → postmortem; eval harness + CI** | 🚧 **current** — spine built & unit-tested; loop *measures* fidelity |
-| 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ⏳ deferred |
-| 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ⏳ deferred |
+| 1 | Bad-deploy slice: demo → break → diagnose → postmortem; eval harness + CI | ✅ done — spine built & unit-tested |
+| 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ✅ built — keyless deterministic gate + opt-in verifier/judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation + a reliability *rate* carry into Wave 3 |
+| **3** | **Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios** | 🚧 **current** — one fixture today; parameterised scenario generation is the unblocker |
 | 4 | Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier | ⏳ deferred |
 | 5 | Polish & ship: HTML render, security pass, MCP registry, launch | ⏳ deferred |
 | 6 | Resolution-verification loop | ⏳ cut-first |
 
-Deferred features carry `NotImplementedError` stubs on purpose — the Wave-1
-boundary is deliberate, not unfinished.
+Deferred features carry `NotImplementedError` stubs on purpose (e.g.
+`generate_scenarios`) — the wave boundary is deliberate, not unfinished.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **44 tests** (ruff +
+The deterministic CI gate is the reliability contract: **92 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
-graceful-abstention behaviour, the citation-fidelity measurement, the server
+graceful-abstention behaviour, the deterministic fabrication check and
+cite-based judge gate, the verifier and advisory LLM-judge, the server
 filters, the postmortem renderer, and the fixture-backed eval harness) on
 Python 3.12 and 3.13.
 
