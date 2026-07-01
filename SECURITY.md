@@ -10,8 +10,7 @@ it ships are a real attack surface once published (see DR-0005 in the
 Please report security issues **privately** — not in a public issue or PR:
 
 - Open a private advisory via **GitHub → Security → Report a vulnerability** on
-  this repository, or
-- email **rajeevskys@gmail.com** with details and reproduction steps.
+  this repository
 
 You can expect an acknowledgement within a few days. Please allow a reasonable
 window to address the issue before any public disclosure.
