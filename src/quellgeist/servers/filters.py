@@ -72,3 +72,26 @@ def recent_commits(
     if limit is not None:
         selected = selected[:limit]
     return selected
+
+
+def filter_metric_rows(
+    metrics: list[dict[str, Any]],
+    name: str | None = None,
+    since: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return metric series, optionally narrowed to one ``name``, with each
+    series' points trimmed to those at or after ``since`` (same canonical UTC
+    format as the log/commit filters). The series identity -- its ``metric`` name
+    -- passes through VERBATIM: it is the handle a ``MetricRef`` cites and the
+    fabrication check looks up (DR-0009), so it is never renamed here."""
+    if since is not None:
+        _require_canonical_ts(since)
+    out: list[dict[str, Any]] = []
+    for series in metrics:
+        if name is not None and series.get("metric") != name:
+            continue
+        if since is not None:
+            points = [p for p in series.get("points", []) if p.get("ts", "") >= since]
+            series = {**series, "points": points}
+        out.append(series)
+    return out

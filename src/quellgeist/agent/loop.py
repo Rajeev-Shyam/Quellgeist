@@ -61,7 +61,9 @@ class LoopResult:
 
 def _record_seen(result: LoopResult, rows: list[dict[str, Any]]) -> None:
     for row in rows:
-        if "id" in row:  # log row (metric id arrives in Wave 3)
+        if "metric" in row:  # metric series (Wave 3): the series name is the handle
+            result.seen_handles.add(("metric", row["metric"]))
+        elif "id" in row:  # log row
             result.seen_handles.add(("log", row["id"]))
         if "sha" in row:  # commit
             result.seen_handles.add(("commit", row["sha"]))

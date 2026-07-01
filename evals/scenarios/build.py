@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from evals.scenarios.generator import Scenario, generate_scenarios
 
@@ -33,15 +34,17 @@ def _to_json(s: Scenario) -> str:
         )
         for r in s.gold_evidence_refs
     ]
-    doc = {
+    doc: dict[str, Any] = {
         "id": s.id,
         "failure_class": s.failure_class,
         "now": s.now,
         "logs": s.logs,
         "commits": s.commits,
-        "gold_cause": s.gold_cause,
-        "gold_evidence_refs": refs,
     }
+    if s.metrics:  # resource_exhaustion only; omitted for the log+commit classes
+        doc["metrics"] = s.metrics
+    doc["gold_cause"] = s.gold_cause
+    doc["gold_evidence_refs"] = refs
     return json.dumps(doc, indent=2) + "\n"
 
 

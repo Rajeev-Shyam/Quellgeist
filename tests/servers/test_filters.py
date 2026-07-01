@@ -4,10 +4,25 @@ from __future__ import annotations
 
 import pytest
 
-from quellgeist.servers.filters import filter_log_rows, recent_commits
+from quellgeist.servers.filters import (
+    filter_log_rows,
+    filter_metric_rows,
+    recent_commits,
+)
 
 ROWS = [{"id": 0, "ts": "2026-06-18T10:00:00Z", "level": "INFO", "route": "/x"}]
 COMMITS = [{"sha": "a1b2c3d", "ts": "2026-06-18T10:00:00Z"}]
+METRICS = [
+    {
+        "metric": "db_connections_in_use",
+        "unit": "count",
+        "points": [
+            {"ts": "2026-06-18T09:59:00Z", "value": 5},
+            {"ts": "2026-06-18T10:01:00Z", "value": 100},
+        ],
+    },
+    {"metric": "memory_rss_bytes", "unit": "bytes", "points": []},
+]
 
 
 def test_canonical_since_is_accepted():
@@ -30,3 +45,26 @@ def test_noncanonical_since_raises(bad):
         filter_log_rows(ROWS, since=bad)
     with pytest.raises(ValueError, match="since must be"):
         recent_commits(COMMITS, since=bad)
+    with pytest.raises(ValueError, match="since must be"):
+        filter_metric_rows(METRICS, since=bad)
+
+
+def test_metric_name_filter_selects_one_series():
+    out = filter_metric_rows(METRICS, name="db_connections_in_use")
+    assert [s["metric"] for s in out] == ["db_connections_in_use"]
+
+
+def test_metric_since_trims_points_but_keeps_the_series_name():
+    out = filter_metric_rows(
+        METRICS, name="db_connections_in_use", since="2026-06-18T10:00:00Z"
+    )
+    (series,) = out
+    assert series["metric"] == "db_connections_in_use"  # identity passes through
+    assert [p["value"] for p in series["points"]] == [100]  # only the >= since point
+
+
+def test_metric_no_filters_returns_all_series():
+    assert {s["metric"] for s in filter_metric_rows(METRICS)} == {
+        "db_connections_in_use",
+        "memory_rss_bytes",
+    }

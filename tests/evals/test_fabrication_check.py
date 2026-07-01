@@ -81,12 +81,32 @@ def test_abstained_diagnosis_is_vacuously_clean():
     assert _check(d).ok
 
 
-def test_metric_handle_fails_closed():
-    # MetricRef is a Wave-3 type; metrics aren't in the signal set yet, so a
-    # cited metric handle must be treated as fabricated (fail-closed, DR-0009).
+def test_metric_handle_fails_closed_when_no_metrics_present():
+    # A scenario with no metric series (the log+commit classes): a cited metric
+    # handle resolves to nothing and is fabricated (fail-closed, DR-0009).
     d = _diag([MetricRef(id="cpu.usage")])
     result = _check(d)
     assert ("metric", "cpu.usage") in result.fabricated
+
+
+_METRICS = [{"metric": "db_connections_in_use", "unit": "count", "points": []}]
+
+
+def test_real_signal_handles_includes_metric_series():
+    handles = real_signal_handles(SCENARIO.logs, SCENARIO.commits, _METRICS)
+    assert ("metric", "db_connections_in_use") in handles
+
+
+def test_cited_metric_resolves_when_the_series_exists():
+    d = _diag([MetricRef(id="db_connections_in_use"), CommitRef(sha="a1b2c3d")])
+    result = check_fabrication(d, SCENARIO.logs, SCENARIO.commits, _METRICS)
+    assert result.ok
+
+
+def test_unknown_metric_fails_closed_even_with_metrics_present():
+    d = _diag([MetricRef(id="not_a_real_metric")])
+    result = check_fabrication(d, SCENARIO.logs, SCENARIO.commits, _METRICS)
+    assert ("metric", "not_a_real_metric") in result.fabricated
 
 
 def test_assert_raises_on_fabrication_with_message():

@@ -19,6 +19,13 @@ LOGS = [
 COMMITS = [
     {"sha": "a1b2c3d", "msg": "refactor auth.verify_token", "files": ["auth.py"]}
 ]
+METRICS = [
+    {
+        "metric": "db_connections_in_use",
+        "unit": "count",
+        "points": [{"ts": "2026-06-18T10:02:00Z", "value": 100}],
+    }
+]
 
 
 class FakeProvider:
@@ -103,6 +110,31 @@ def test_unparseable_verdict_counts_as_unsupported():
     res = verify(d, LOGS, COMMITS, FakeProvider(["not json at all"]))
     assert res.diagnosis.abstained
     assert not res.verdicts[0].supported
+
+
+def test_metric_handle_resolves_and_can_be_supported():
+    # A resource-exhaustion diagnosis cites a metric series + the culprit commit;
+    # the metric resolves against the scenario's metrics so the verifier can judge
+    # support (Wave 3).
+    d = _diag(
+        "resource exhaustion: db pool maxed out after the deploy",
+        [
+            {"type": "metric", "id": "db_connections_in_use"},
+            {"type": "commit", "sha": "a1b2c3d"},
+        ],
+    )
+    res = verify(d, LOGS, COMMITS, FakeProvider([_verdict(True)]), METRICS)
+    assert not res.diagnosis.abstained
+    assert res.verdicts[0].supported
+
+
+def test_unresolvable_metric_short_circuits_without_a_model_call():
+    # cites a metric no series provides -> nothing resolves -> unsupported, and NO
+    # model call is spent (the empty fake would IndexError if called).
+    d = _diag("phantom metric", [{"type": "metric", "id": "not_a_metric"}])
+    res = verify(d, LOGS, COMMITS, FakeProvider([]), METRICS)
+    assert res.diagnosis.abstained
+    assert "no cited evidence" in res.verdicts[0].reason
 
 
 def test_verifier_model_config_knob(monkeypatch):

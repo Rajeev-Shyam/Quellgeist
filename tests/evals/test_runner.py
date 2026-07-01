@@ -147,7 +147,7 @@ class GoldProvider:
                 (
                     {"type": "commit", "sha": r.sha}
                     if r.type == "commit"
-                    else {"type": "log", "id": r.id}
+                    else {"type": r.type, "id": r.id}  # log or metric
                 )
                 for r in s.gold_evidence_refs
             ]
