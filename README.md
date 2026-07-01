@@ -180,8 +180,10 @@ QG_MIN_CALL_INTERVAL_S=6 \      # pace calls under the free-tier RPM (avoids 429
 `QG_MODEL`). An unreachable backend (quota/503/timeout) **or** a rejected
 credential (missing/invalid/stale key) is reported as a **skip**, not a failure
 (DR-0015/DR-0017), so the out-of-band eval never reddens on a free-tier hiccup.
-The LLM-judge's scores are **advisory** until validated against a human-labelled
-gold subset — and are self-grading whenever `QG_JUDGE_MODEL` equals the reasoner.
+The LLM-judge's scores are **advisory** (they never gate). On a human-labelled
+gold subset it agreed with human verdicts at **Cohen's kappa 0.81** using an
+independent judge (`groq/llama-3.1-8b-instant` ≠ the reasoner) — validated on that
+subset (DR-0018); still self-grading whenever `QG_JUDGE_MODEL` equals the reasoner.
 
 > **CI's out-of-band eval runs on Groq** (`groq/llama-3.3-70b-versatile`, gated on
 > `GROQ_API_KEY`): Gemini's free tier proved unusable from cloud CI (429 → 503 →
