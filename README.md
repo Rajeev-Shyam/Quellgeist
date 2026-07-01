@@ -1,6 +1,7 @@
 # Quellgeist
 
 [![ci](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/ci.yml/badge.svg)](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/ci.yml)
+[![reliability](https://img.shields.io/badge/reliability-61%2F65%20·%200%20fabricated-brightgreen)](docs/case-studies/wave3-reliability-rate.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -19,14 +20,14 @@ ideas set it apart:
 - **Abstain-over-hallucinate.** A confidently-stated wrong cause is the worst
   possible answer, so *"insufficient evidence"* is a first-class outcome.
 
-> **Status: WIP — Wave 2 complete (reliability core); entering Wave 3 (breadth).**
-> The bad-deploy slice runs end-to-end and is unit-tested, and the reliability
-> core is built: a deterministic, keyless **fabrication check** + a cite-based
-> judge gate the eval, with an opt-in **verifier pass** (forces abstention when
-> the evidence doesn't support a cause) and an advisory **LLM-judge** layered on
-> top. The first real end-to-end run passed with **zero fabrication** — but that
-> is *one fixture*, a smoke test, not a reliability *rate* yet (Wave 3 turns one
-> fixture into ~50). See [Status & roadmap](#status--roadmap).
+> **Status: WIP — Wave 3 complete (breadth + a measured reliability rate).** All
+> three failure classes (bad deploy · config/env · resource exhaustion) generate
+> and gate, across a 65-scenario suite. First full real-model run: **61/65 passed,
+> 0 fabricated** (Cerebras Gemma-4-31B; `resource_exhaustion` a clean 15/15), and
+> the advisory **LLM-judge is validated** at **Cohen's kappa 0.81** on a
+> human-labelled subset. When the agent misses it's *incomplete* or *too cautious*,
+> never confidently fabricating. Next: the cost/fine-tune comparison (Wave 4). See
+> [Status & roadmap](#status--roadmap) · [reliability case study](docs/case-studies/wave3-reliability-rate.md).
 
 ## Why it's different
 
@@ -203,8 +204,8 @@ The full decision history lives in the
 | 0 | De-risk the model bet (4B can orchestrate the loop) | ✅ done — default = Qwen3-4B (DR-0008) |
 | 1 | Bad-deploy slice: demo → break → diagnose → postmortem; eval harness + CI | ✅ done — spine built & unit-tested |
 | 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ✅ built — keyless deterministic gate + opt-in verifier/judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation + a reliability *rate* carry into Wave 3 |
-| **3** | **Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios** | 🚧 **current** — one fixture today; parameterised scenario generation is the unblocker |
-| 4 | Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier | ⏳ deferred |
+| 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ✅ done — 3 classes across a 65-scenario suite; first full run **61/65, 0 fabricated**; judge validated (kappa 0.81). See the [reliability](docs/case-studies/wave3-reliability-rate.md) + [judge](docs/case-studies/wave3-judge-validation.md) case studies |
+| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | 🚧 **next** — measure the intended default reasoner (Qwen3-4B) on this harness |
 | 5 | Polish & ship: HTML render, security pass, MCP registry, launch | ⏳ deferred |
 | 6 | Resolution-verification loop | ⏳ cut-first |
 
@@ -213,12 +214,17 @@ Deferred features carry `NotImplementedError` stubs on purpose (e.g.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **92 tests** (ruff +
+The deterministic CI gate is the reliability contract: **126 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
-cite-based judge gate, the verifier and advisory LLM-judge, the server
-filters, the postmortem renderer, and the fixture-backed eval harness) on
-Python 3.12 and 3.13.
+cite-based judge gate, the verifier and advisory LLM-judge, parameterised
+scenario generation, the judge-validation harness, the server filters, the
+postmortem renderer, and the fixture-backed eval harness) on Python 3.12 and 3.13.
+
+Out of band, the **model-driven eval** runs the reasoner over the 65-scenario
+suite. The latest full run scored **61/65 passed, 0 fabricated evidence**
+(Cerebras Gemma-4-31B) — per-class breakdown + the failure analysis in the
+[reliability case study](docs/case-studies/wave3-reliability-rate.md).
 
 ```bash
 uv run pytest tests/ -q
