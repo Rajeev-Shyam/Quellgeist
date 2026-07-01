@@ -68,6 +68,17 @@ def _wire(monkeypatch, scripted):
     )
 
 
+def test_make_tools_wires_all_three_servers():
+    """Regression: the CLI must expose the same tool surface as the eval harness
+    -- query_metrics was missing, so `quellgeist diagnose` could not diagnose a
+    resource-exhaustion incident even though the eval path could."""
+    assert [t.name for t in cli._make_tools()] == [
+        "query_logs",
+        "get_recent_commits",
+        "query_metrics",
+    ]
+
+
 def test_diagnose_prints_postmortem(monkeypatch, capsys):
     _wire(
         monkeypatch,
