@@ -1,0 +1,47 @@
+name: judge-validation
+
+# Measure the advisory LLM-judge's agreement with the human-labelled gold subset
+# (DR-0018). Manual and REPORTING only -- it never gates. Key-gated: skips with no
+# GROQ_API_KEY, and the harness treats an unreachable/rejected backend as a SKIP,
+# not a failure (DR-0012/DR-0015).
+#
+# Use a judge model DIFFERENT from the reasoner (groq/llama-3.3-70b-versatile) or
+# the number is self-graded, not validation (DR-0017). The default below is a
+# distinct, smaller Groq model; override it (ideally with a stronger model) via
+# the workflow input. The run is light (~11 judge calls).
+
+on:
+  workflow_dispatch:
+    inputs:
+      judge_model:
+        description: "Judge model (LiteLLM id) -- MUST differ from groq/llama-3.3-70b-versatile"
+        required: false
+        default: "groq/llama-3.1-8b-instant"
+
+jobs:
+  validate:
+    name: judge-vs-human agreement (key-gated)
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      QG_JUDGE_MODEL: ${{ inputs.judge_model }}
+      # Pace the judge calls under the free-tier RPM (DR-0015).
+      QG_MIN_CALL_INTERVAL_S: "3"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Validate the judge against the labelled subset (skips without a key)
+        run: |
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "No GROQ_API_KEY secret -> skipping judge validation (DR-0012)."
+            echo "The keyless deterministic gate (ci.yml) is the reliability gate."
+            exit 0
+          fi
+          echo "Validating judge $QG_JUDGE_MODEL against the labelled subset ..."
+          uv run python -m evals.validate_judge
