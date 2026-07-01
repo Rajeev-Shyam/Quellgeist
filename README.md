@@ -218,7 +218,7 @@ The full decision history lives in the
 | 1 | Bad-deploy slice: demo → break → diagnose → postmortem; eval harness + CI | ✅ done — spine built & unit-tested |
 | 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ✅ built — keyless deterministic gate + opt-in verifier/judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation + a reliability *rate* carry into Wave 3 |
 | 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ✅ done — 3 classes across a 65-scenario suite; first full run **61/65, 0 fabricated**; judge validated (kappa 0.81). See the [reliability](docs/case-studies/wave3-reliability-rate.md) + [judge](docs/case-studies/wave3-judge-validation.md) case studies |
-| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | 🚧 **in progress** — baseline measured: base Qwen3-4B **0/65 fixtures · 0/16 holdout · 0 fabricated** — all safe abstentions, the floor the fine-tune must beat (DR-0019, [case study](docs/case-studies/wave4-qwen-baseline.md)) |
+| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | 🚧 **in progress** — baseline measured: base Qwen3-4B **0/65 fixtures · 0/16 holdout · 0 fabricated** — every failure safe (80 abstentions + 1 under-cited correct cause), the floor the fine-tune must beat (DR-0019, [case study](docs/case-studies/wave4-qwen-baseline.md)) |
 | 5 | Polish & ship: HTML render, security pass, MCP registry, launch | ⏳ deferred |
 | 6 | Resolution-verification loop | ⏳ cut-first |
 
@@ -227,7 +227,7 @@ Deferred features carry `NotImplementedError` stubs on purpose (e.g.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **128 tests** (ruff +
+The deterministic CI gate is the reliability contract: **129 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
 cite-based judge gate, the verifier and advisory LLM-judge, parameterised
