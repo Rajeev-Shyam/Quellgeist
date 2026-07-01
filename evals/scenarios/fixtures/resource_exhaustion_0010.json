@@ -1,0 +1,140 @@
+{
+  "id": "resource_exhaustion_0010",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-06-28T12:57:20Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-28T12:42:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-28T12:44:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-28T12:46:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-28T12:48:20Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-28T12:48:25Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-28T12:48:40Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-28T12:49:00Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 7,
+      "ts": "2026-06-28T12:49:20Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "34a0356",
+      "ts": "2026-06-27T05:10:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "3549fa6",
+      "ts": "2026-06-28T12:48:00Z",
+      "msg": "perf: reuse connections without closing them",
+      "files": [
+        "demo/app/memory.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "memory_rss_bytes",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-06-28T12:42:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-06-28T12:44:00Z",
+          "value": 6
+        },
+        {
+          "ts": "2026-06-28T12:46:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-06-28T12:48:20Z",
+          "value": 29
+        },
+        {
+          "ts": "2026-06-28T12:48:40Z",
+          "value": 52
+        },
+        {
+          "ts": "2026-06-28T12:49:00Z",
+          "value": 76
+        },
+        {
+          "ts": "2026-06-28T12:49:20Z",
+          "value": 100
+        },
+        {
+          "ts": "2026-06-28T12:48:20Z",
+          "value": 100
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy 3549fa6 (12:48:00Z) -- perf: reuse connections without closing them -- drove memory_rss_bytes to its ceiling; /data errors begin ~20s later at 12:48:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "memory_rss_bytes"
+    },
+    {
+      "type": "commit",
+      "sha": "3549fa6"
+    }
+  ]
+}
