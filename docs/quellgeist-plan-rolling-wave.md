@@ -183,20 +183,53 @@ Ran the *Wave Review Checklist* (below) at the boundary:
 - **Decisions unchanged:** no locked decision changed at this boundary, so no new DR was opened for the sync — DR-0008 (Qwen default), DR-0009/DR-0013 (handles + fabrication check), DR-0016 (verifier/judge built), and DR-0017 (cite-based judge + Groq in CI) all still hold. Next id remains **DR-0018**.
 - **Next wave:** Wave 3's objective + rough tasks are below; they get re-scoped to full task/step detail at Wave 3 kickoff (the immediate next step). **Start with parameterised scenario generation** (`generator.py::generate_scenarios`) — it unblocks the reliability rate, the human gold subset, and the judge validation. Keep the train/eval **distribution-separation** constraint (DR-0003) front-and-centre from the first generated fixture, and build the held-out set (`evals/scenarios/holdout/`) from a *different* distribution than the tuning set.
 
-## Wave 3 — Breadth: Classes 2 & 3 + Metrics *(rolling)*
+## Wave 3 — Breadth: Classes 2 & 3 + Metrics
+
+**Status: COMPLETE (2026-07-01). Outcome: 3 classes across a 65-scenario suite; first full rate 61/65 · 0 fabricated (Gemma-4-31B stand-in, `wave3-reliability-rate.md`); judge validated at kappa 0.81 (DR-0018, `wave3-judge-validation.md`).**
 
 **Objective:** add config/env-var and resource-exhaustion classes; bring metrics online.
 **Entry criteria:** Wave 2 reliability bar met on class 1.
 **Rough tasks:** build the **metrics MCP server** + real Prometheus counters in the demo app; chaos scripts for config/env and resource-exhaustion; extend `generator.py` to **parameterised generation** (templates → variants) toward ~50 scenarios across the three classes; re-validate the judge on a gold subset spanning all classes.
-**Exit criteria:** all three classes pass their reliability bars; ~50-scenario suite green in CI.
+**Exit criteria:** all three classes pass their reliability bars; ~50-scenario suite green in CI. *(Met — see the Wave 3 exit table in `wave3-reliability-rate.md`. Known deferrals: the demo's live resource-exhaustion chaos script is unwired (the eval path via scenario `metrics` is fully wired and tested), and the stdio MCP client adapter remains deferred, DR-0010.)*
 
-## Wave 4 — Cost / Fine-tune *(rolling)*
+### Wave 3 → Wave 4 boundary review (2026-07-02)
 
-**Objective:** the cost thesis with a measured (honest) result.
-**Entry criteria:** stable base-model behaviour + evals from Wave 3.
-**Rough tasks:** generate **training data** from the scenario generator; **local QLoRA PoC** on the RTX 5060 to validate the pipeline; **real training on cloud GPU** (Modal default / Vast.ai cheaper); **serve locally via Ollama**; compare fine-tuned-vs-base-vs-frontier, with/without verifier, on **cost and quality** (optionally include Claude — run via the Claude Agent SDK / Claude Code on your home Max plan — as a verifier comparison vs the default Gemini free tier).
-**Critical (from review):** the **eval/holdout scenarios must come from a different distribution than the fine-tuning data** (e.g. hand-authored or differently-parameterised), or the numbers measure memorisation, not skill. Build the holdout set explicitly.
-**Exit criteria:** a published, honest cost/quality comparison — including the case where local proves insufficient (still a valid finding).
+Ran the *Wave Review Checklist* (below) at the boundary:
+
+- **What this wave (and the bridge into Wave 4) taught us that changes downstream:** (a) the model-agnostic thesis held again — Groq's daily quota exhausted mid-wave and a one-env-var swap to Cerebras produced the merged 61/65; (b) development moved to a machine with a local GPU, so **local serving via Ollama is now real** (Ollama 0.31.1 + pinned `qwen3:4b-instruct-2507-q4_K_M`, ~0.85 s/call warm on an RTX 5060 8GB, $0, fully offline) — the serving leg of DR-0004 is no longer deferred; (c) the **base Qwen3-4B baseline is measured** (DR-0019): 0/65 fixtures · 0/16 holdout · **zero fabrication across all 81** — reliably safe, completely ineffective, failure mode = speculative filtering. The cost story now has an honest floor and a specific behaviour for the fine-tune to fix.
+- **Docs brought current (this review):** the brief's build-sequence statuses (Wave 3 was still "current"), the README status/roadmap/tool count, and this plan's Wave 3 status line. A real gap found by auditing the docs against the code: the CLI wired only two of the three tools (`query_metrics` was missing from `quellgeist diagnose` while the eval path had it) — fixed with a regression test.
+- **Cut/defer check:** Wave 6 (resolution-verification) remains the cut-first item. The training-data trajectory format gets its own DR before anything is built (it shapes what the fine-tune learns; not a detail).
+- **Decisions:** DR-0019 opened (baseline + pinned serving artifact; refines DR-0008). Next id **DR-0020**.
+- **Next wave:** Wave 4 is re-scoped to task detail below. The holdout has now been *evaluated* (its purpose) but never tuned on — keep DR-0003's separation absolute: **train on the fixtures distribution, compare on the holdout.**
+
+## Wave 4 — Cost / Fine-tune *(current — re-scoped at the 2026-07-02 boundary)*
+
+**Objective:** the cost thesis with a measured (honest) result — *fine-tuned local Qwen3-4B + verifier ≈ frontier-only quality at a fraction of the cost* (a hypothesis to test, not a promise).
+**Entry criteria:** stable base-model behaviour + evals from Wave 3 — met.
+**Critical (from review):** the **eval/holdout scenarios must come from a different distribution than the fine-tuning data** (DR-0003), or the numbers measure memorisation, not skill. The holdout exists (16 scenarios, disjoint token banks) and is selected only explicitly (`QG_SCENARIOS_DIR`).
+
+### Task 1: Baseline the intended reasoner  ✅ DONE (DR-0019)
+- [x] Pin the local serving artifact: Ollama `qwen3:4b-instruct-2507-q4_K_M`, `QG_MODEL=ollama_chat/…` — env-only swap, no code change.
+- [x] Measure base Qwen3-4B under the Gemma run's conditions: **fixtures 0/65 · 0 fabricated; holdout 0/16 · 0 fabricated** (`wave4-qwen-baseline.md`).
+- [x] Harness: `QG_SCENARIOS_DIR` selects the holdout explicitly; CLI tool-surface gap fixed (`query_metrics`).
+
+### Task 2: Training data from the generator *(next; DR required first)*
+- [ ] **DR-0020 (to open): trajectory format.** Decide what a training example is — full ReAct trajectories (broad query → observe → cite-and-diagnose) vs (context → gold diagnosis) pairs — and how abstention examples are represented so the safety invariant survives tuning. Target the measured failure mode: speculative filtering.
+- [ ] Generate from the **fixtures distribution only** (`generator.py`); hold out nothing less than the whole `holdout/` dir.
+- [ ] Acceptance: a reviewed sample of N trajectories; zero holdout contamination (id + token-bank check).
+
+### Task 3: QLoRA fine-tune (user-run: local PoC → cloud)
+- [ ] Local PoC on the RTX 5060 (8GB, 4-bit QLoRA via Unsloth) to validate the pipeline; free Colab/Kaggle T4 as the fallback (the DR-0008 spike's precedent).
+- [ ] Real training run (Modal default / Vast.ai cheaper / Colab). Export a 4-bit artifact servable by Ollama.
+
+### Task 4: The comparison matrix (the headline)
+- [ ] Fine-tuned vs base vs the Gemma-4-31B stand-in (and optionally a frontier model / Claude-as-verifier via the home Max plan), with/without verifier, on **cost AND quality**, primary axis = **the holdout**; repeated passes per cell (local decoding is not run-to-run deterministic — DR-0019).
+- [ ] Instrument real per-scenario token/call counts during these runs (observation sizes, loop turns, verifier calls) — measured cost, not estimates.
+
+### Task 5: Publish
+- [ ] Case study + README cost story update — **including the case where local proves insufficient (still a valid finding)**.
+
+**Exit criteria:** a published, honest cost/quality comparison across the holdout.
 
 ## Wave 5 — Polish & Ship *(rolling)*
 
