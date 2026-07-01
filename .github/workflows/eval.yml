@@ -36,6 +36,12 @@ jobs:
       # shares QG_MODEL) -- the keyless gate is the deterministic judge + check.
       QG_VERIFY: "1"
       QG_JUDGE_LLM: "1"
+      # Pace calls under Groq's free-tier RPM. Wave 3 grew the corpus to ~65
+      # scenarios; an unpaced burst (loop + verifier + judge per scenario) trips
+      # the rate limit, and the harness then SKIPs green with no number
+      # (DR-0012). A small inter-call delay keeps a full run under the cap.
+      # Starting point -- tune per the observed limit.
+      QG_MIN_CALL_INTERVAL_S: "3"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
