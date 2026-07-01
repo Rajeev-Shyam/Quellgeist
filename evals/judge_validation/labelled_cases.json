@@ -1,0 +1,141 @@
+{
+  "_readme": "Human-labelled gold subset for validating the advisory LLM-judge (DR-0018). Self-contained and INDEPENDENT of the generated eval corpus: each case pairs a hand-authored scenario with a diagnosis and the verdict a human reviewer assigns on the rubric (correct_cause = does the top hypothesis identify the gold root cause; evidence_valid = is the cited evidence real and relevant; verdict = correct_cause AND evidence_valid, matching RubricVerdict.passed). evals/validate_judge.py runs the LLM-judge on these and reports judge-vs-human agreement. Labels are the maintainer's ground truth, reviewed at merge.",
+  "scenarios": {
+    "bad_deploy": {
+      "id": "jv_bad_deploy",
+      "failure_class": "bad_deploy",
+      "now": "2026-04-10T12:10:00Z",
+      "logs": [
+        {"id": 0, "ts": "2026-04-10T12:00:00Z", "level": "INFO", "route": "/pay", "status": 200, "msg": "/pay ok"},
+        {"id": 1, "ts": "2026-04-10T12:04:00Z", "level": "INFO", "route": "/pay", "status": 200, "msg": "/pay ok"},
+        {"id": 2, "ts": "2026-04-10T12:05:30Z", "level": "ERROR", "route": "/pay", "status": 500, "msg": "TypeError: 'NoneType' object has no attribute 'amount' in payments.charge"},
+        {"id": 3, "ts": "2026-04-10T12:06:10Z", "level": "ERROR", "route": "/pay", "status": 500, "msg": "TypeError: 'NoneType' object has no attribute 'amount' in payments.charge"}
+      ],
+      "commits": [
+        {"sha": "9aa0011", "ts": "2026-04-09T18:00:00Z", "msg": "docs: tidy changelog", "files": ["CHANGELOG.md"]},
+        {"sha": "d3f00d5", "ts": "2026-04-10T12:05:00Z", "msg": "deploy: rework payments.charge", "files": ["demo/app/payments.py"]}
+      ],
+      "gold_cause": "Bad deploy d3f00d5 reworked payments.charge and introduced a NoneType error; /pay 500s begin ~30s later.",
+      "gold_evidence_refs": [{"type": "log", "id": 2}, {"type": "commit", "sha": "d3f00d5"}]
+    },
+    "config_error": {
+      "id": "jv_config_error",
+      "failure_class": "config_error",
+      "now": "2026-04-11T09:20:00Z",
+      "logs": [
+        {"id": 0, "ts": "2026-04-11T09:10:00Z", "level": "INFO", "route": "/notify", "status": 200, "msg": "/notify ok"},
+        {"id": 1, "ts": "2026-04-11T09:12:30Z", "level": "ERROR", "route": "/notify", "status": 500, "msg": "KeyError: 'SMTP_URL' not set"},
+        {"id": 2, "ts": "2026-04-11T09:13:00Z", "level": "ERROR", "route": "/notify", "status": 500, "msg": "KeyError: 'SMTP_URL' not set"}
+      ],
+      "commits": [
+        {"sha": "77aa001", "ts": "2026-04-10T20:00:00Z", "msg": "test: add notify coverage", "files": ["tests/test_notify.py"]},
+        {"sha": "c0ffee1", "ts": "2026-04-11T09:12:00Z", "msg": "config: remove SMTP_URL default", "files": ["config/mail.py"]}
+      ],
+      "gold_cause": "Config change c0ffee1 removed the SMTP_URL default; /notify raises KeyError shortly after.",
+      "gold_evidence_refs": [{"type": "log", "id": 1}, {"type": "commit", "sha": "c0ffee1"}]
+    },
+    "resource": {
+      "id": "jv_resource",
+      "failure_class": "resource_exhaustion",
+      "now": "2026-04-12T15:30:00Z",
+      "logs": [
+        {"id": 0, "ts": "2026-04-12T15:20:00Z", "level": "INFO", "route": "/report", "status": 200, "msg": "/report ok"},
+        {"id": 1, "ts": "2026-04-12T15:25:30Z", "level": "ERROR", "route": "/report", "status": 500, "msg": "TimeoutError: could not acquire a connection"},
+        {"id": 2, "ts": "2026-04-12T15:26:10Z", "level": "ERROR", "route": "/report", "status": 500, "msg": "TimeoutError: could not acquire a connection"}
+      ],
+      "commits": [
+        {"sha": "11bb220", "ts": "2026-04-11T10:00:00Z", "msg": "docs: update runbook", "files": ["docs/runbook.md"]},
+        {"sha": "beefca7", "ts": "2026-04-12T15:25:00Z", "msg": "perf: hold db connections open across requests", "files": ["demo/app/db.py"]}
+      ],
+      "metrics": [
+        {"metric": "db_pool_in_use", "unit": "count", "points": [
+          {"ts": "2026-04-12T15:22:00Z", "value": 6},
+          {"ts": "2026-04-12T15:24:00Z", "value": 40},
+          {"ts": "2026-04-12T15:25:00Z", "value": 90},
+          {"ts": "2026-04-12T15:25:30Z", "value": 100}
+        ]}
+      ],
+      "gold_cause": "Deploy beefca7 held db connections open; db_pool_in_use climbed to its ceiling and /report requests time out acquiring a connection.",
+      "gold_evidence_refs": [{"type": "metric", "id": "db_pool_in_use"}, {"type": "commit", "sha": "beefca7"}]
+    }
+  },
+  "cases": [
+    {
+      "id": "bad_deploy__correct",
+      "scenario": "bad_deploy",
+      "diagnosis": {"summary": "payments deploy broke /pay", "abstained": false, "hypotheses": [{"cause": "Deploy d3f00d5 reworked payments.charge and passed a None where an amount was expected, so /pay returns 500s.", "confidence": 0.92, "evidence": [{"type": "log", "id": 2}, {"type": "commit", "sha": "d3f00d5"}]}], "suggested_actions": ["roll back d3f00d5"]},
+      "human": {"correct_cause": true, "evidence_valid": true, "verdict": "pass"},
+      "rationale": "Names the gold cause and cites the first error log + the culprit commit."
+    },
+    {
+      "id": "bad_deploy__wrong_cause",
+      "scenario": "bad_deploy",
+      "diagnosis": {"summary": "db outage", "abstained": false, "hypotheses": [{"cause": "A database outage made /pay fail.", "confidence": 0.7, "evidence": [{"type": "commit", "sha": "9aa0011"}]}], "suggested_actions": ["check the database"]},
+      "human": {"correct_cause": false, "evidence_valid": false, "verdict": "fail"},
+      "rationale": "Wrong cause (no DB signal) and cites the unrelated docs decoy commit."
+    },
+    {
+      "id": "bad_deploy__weak_evidence",
+      "scenario": "bad_deploy",
+      "diagnosis": {"summary": "a deploy broke payments", "abstained": false, "hypotheses": [{"cause": "A recent deploy broke payments.charge.", "confidence": 0.6, "evidence": [{"type": "log", "id": 0}]}], "suggested_actions": ["investigate the deploy"]},
+      "human": {"correct_cause": true, "evidence_valid": false, "verdict": "fail"},
+      "rationale": "Cause is roughly right, but the cited log 0 is a healthy INFO line, not evidence of the failure."
+    },
+    {
+      "id": "bad_deploy__abstains_despite_clear_signal",
+      "scenario": "bad_deploy",
+      "diagnosis": {"abstained": true, "abstention_reason": "not sure what happened", "hypotheses": []},
+      "human": {"correct_cause": false, "evidence_valid": false, "verdict": "fail"},
+      "rationale": "Abstaining is wrong when the gold has a clear cause backed by an error log + the culprit deploy."
+    },
+    {
+      "id": "config_error__correct",
+      "scenario": "config_error",
+      "diagnosis": {"summary": "SMTP_URL default removed", "abstained": false, "hypotheses": [{"cause": "Commit c0ffee1 removed the SMTP_URL default, so /notify raises KeyError.", "confidence": 0.9, "evidence": [{"type": "log", "id": 1}, {"type": "commit", "sha": "c0ffee1"}]}], "suggested_actions": ["restore the SMTP_URL default"]},
+      "human": {"correct_cause": true, "evidence_valid": true, "verdict": "pass"},
+      "rationale": "Names the gold config cause and cites the KeyError log + the config commit."
+    },
+    {
+      "id": "config_error__wrong_cause_valid_evidence",
+      "scenario": "config_error",
+      "diagnosis": {"summary": "mailer code bug", "abstained": false, "hypotheses": [{"cause": "A code regression in the mailer function crashed /notify.", "confidence": 0.7, "evidence": [{"type": "log", "id": 1}]}], "suggested_actions": ["revert the mailer code"]},
+      "human": {"correct_cause": false, "evidence_valid": true, "verdict": "fail"},
+      "rationale": "Misattributes a config error to a code bug (wrong cause), though the cited KeyError log is real and relevant."
+    },
+    {
+      "id": "config_error__weak_evidence",
+      "scenario": "config_error",
+      "diagnosis": {"summary": "config change", "abstained": false, "hypotheses": [{"cause": "A config change removed the SMTP_URL default.", "confidence": 0.6, "evidence": [{"type": "commit", "sha": "77aa001"}]}], "suggested_actions": ["restore the default"]},
+      "human": {"correct_cause": true, "evidence_valid": false, "verdict": "fail"},
+      "rationale": "Right cause, but cites the unrelated test decoy commit instead of the config change."
+    },
+    {
+      "id": "resource__correct",
+      "scenario": "resource",
+      "diagnosis": {"summary": "db pool exhausted after deploy", "abstained": false, "hypotheses": [{"cause": "Deploy beefca7 held db connections open; db_pool_in_use hit its ceiling and /report times out acquiring a connection.", "confidence": 0.9, "evidence": [{"type": "metric", "id": "db_pool_in_use"}, {"type": "commit", "sha": "beefca7"}]}], "suggested_actions": ["roll back beefca7", "raise the pool ceiling"]},
+      "human": {"correct_cause": true, "evidence_valid": true, "verdict": "pass"},
+      "rationale": "Names the gold cause and cites the climbing metric + the culprit deploy."
+    },
+    {
+      "id": "resource__wrong_cause_valid_evidence",
+      "scenario": "resource",
+      "diagnosis": {"summary": "slow query", "abstained": false, "hypotheses": [{"cause": "A slow SQL query on /report caused the timeouts.", "confidence": 0.6, "evidence": [{"type": "log", "id": 1}]}], "suggested_actions": ["optimise the query"]},
+      "human": {"correct_cause": false, "evidence_valid": true, "verdict": "fail"},
+      "rationale": "Blames a slow query rather than the connection leak/deploy (wrong cause), though the timeout log is real."
+    },
+    {
+      "id": "resource__fabricated_metric",
+      "scenario": "resource",
+      "diagnosis": {"summary": "cpu meltdown", "abstained": false, "hypotheses": [{"cause": "A CPU meltdown on /report exhausted the workers.", "confidence": 0.7, "evidence": [{"type": "metric", "id": "cpu_meltdown"}]}], "suggested_actions": ["add CPU"]},
+      "human": {"correct_cause": false, "evidence_valid": false, "verdict": "fail"},
+      "rationale": "Wrong cause and cites a metric series (cpu_meltdown) that does not exist."
+    },
+    {
+      "id": "resource__correct_cause_without_metric",
+      "scenario": "resource",
+      "diagnosis": {"summary": "deploy caused timeouts", "abstained": false, "hypotheses": [{"cause": "Deploy beefca7 exhausted the db connection pool, so /report requests time out.", "confidence": 0.85, "evidence": [{"type": "commit", "sha": "beefca7"}, {"type": "log", "id": 1}]}], "suggested_actions": ["roll back beefca7"]},
+      "human": {"correct_cause": true, "evidence_valid": true, "verdict": "pass"},
+      "rationale": "Correct cause backed by the culprit deploy + a real timeout log. It omits the distinctive metric handle -- the deterministic judge enforces exact gold handles, but the rubric judges correctness and evidence validity, both of which hold here."
+    }
+  ]
+}
