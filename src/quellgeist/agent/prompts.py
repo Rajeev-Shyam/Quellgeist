@@ -33,7 +33,8 @@ When you have enough evidence, respond with a diagnosis action:
       "confidence": 0.0,
       "evidence": [
         {"type": "log", "id": <integer id from query_logs>, "note": "<why this supports the cause>"},
-        {"type": "commit", "sha": "<sha from get_recent_commits>", "note": "<why>"}
+        {"type": "commit", "sha": "<sha from get_recent_commits>", "note": "<why>"},
+        {"type": "metric", "id": "<metric name from query_metrics>", "note": "<why>"}
       ]
     }
   ],
@@ -41,9 +42,10 @@ When you have enough evidence, respond with a diagnosis action:
 }}
 
 Hard rules:
-- Each evidence item MUST include "type" ("log" or "commit") and the matching id
-  field ("id" for log, "sha" for commit). Copy the id/sha EXACTLY as the tool
-  returned it -- never invent, guess, or reformat one. Explanation goes in
+- Each evidence item MUST include "type" ("log", "commit", or "metric") and the
+  matching id field ("id" for log/metric, "sha" for commit). For a metric, the id
+  is the series' `metric` name from query_metrics. Copy the id/sha EXACTLY as the
+  tool returned it -- never invent, guess, or reformat one. Explanation goes in
   "note", never in place of the id/sha.
 - confidence is a number from 0.0 to 1.0. Every hypothesis needs at least one
   evidence item. List hypotheses best-first.
@@ -59,8 +61,8 @@ def build_system_prompt(tool_lines: list[str]) -> str:
     tools_block = "\n".join(f"- {line}" for line in tool_lines)
     return (
         "You are an incident-triage agent. A production service is misbehaving. "
-        "Investigate by calling tools to gather evidence (logs, recent deploys), "
-        "then produce a root-cause diagnosis backed by cited evidence.\n\n"
+        "Investigate by calling tools to gather evidence (logs, recent deploys, "
+        "metrics), then produce a root-cause diagnosis backed by cited evidence.\n\n"
         f"Available tools:\n{tools_block}\n\n"
         f"{_TOOL_CALL_FORMAT}\n"
         f"{_DIAGNOSIS_CONTRACT}"

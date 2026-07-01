@@ -9,9 +9,10 @@ whether the evidence *supports* the claim is the verifier's job, and overall
 quality is the judge's.
 
 The check is **fail-closed**: a cited handle whose ``(type, key)`` is absent from
-the real-signal set is a fabrication. That includes ``MetricRef`` handles until
-Wave 3 brings metrics into the signal set (DR-0009 watch-out: prefer fail-closed
-over fail-open on unknown ref types).
+the real-signal set is a fabrication. As of Wave 3 the signal set includes metric
+series ids, so a legitimate ``MetricRef`` resolves; a cited metric that no series
+provides is still a fabrication (DR-0009 watch-out: prefer fail-closed over
+fail-open on unknown ref types).
 """
 
 from __future__ import annotations
@@ -29,11 +30,13 @@ def _handle_key(ref: EvidenceRef) -> Handle:
 
 
 def real_signal_handles(
-    logs: list[dict[str, Any]], commits: list[dict[str, Any]]
+    logs: list[dict[str, Any]],
+    commits: list[dict[str, Any]],
+    metrics: list[dict[str, Any]] | None = None,
 ) -> set[Handle]:
     """Every handle a diagnosis is allowed to cite for this scenario: each log
-    row's source-stable ``id`` and each commit ``sha``, verbatim. Metric handles
-    arrive in Wave 3."""
+    row's source-stable ``id``, each commit ``sha``, and each metric series'
+    ``metric`` name (Wave 3), verbatim."""
     handles: set[Handle] = set()
     for row in logs:
         if "id" in row:
@@ -41,6 +44,9 @@ def real_signal_handles(
     for c in commits:
         if "sha" in c:
             handles.add(("commit", c["sha"]))
+    for m in metrics or []:
+        if "metric" in m:
+            handles.add(("metric", m["metric"]))
     return handles
 
 
@@ -63,10 +69,11 @@ def check_fabrication(
     diagnosis: Diagnosis,
     logs: list[dict[str, Any]],
     commits: list[dict[str, Any]],
+    metrics: list[dict[str, Any]] | None = None,
 ) -> FabricationResult:
     """Cited handles that do NOT exist in the real signal set. ``ok`` when empty.
     An abstained diagnosis cites nothing, so it is vacuously clean."""
-    real = real_signal_handles(logs, commits)
+    real = real_signal_handles(logs, commits, metrics)
     return FabricationResult(frozenset(cited_handles(diagnosis) - real))
 
 
@@ -79,10 +86,11 @@ def assert_no_fabrication(
     diagnosis: Diagnosis,
     logs: list[dict[str, Any]],
     commits: list[dict[str, Any]],
+    metrics: list[dict[str, Any]] | None = None,
 ) -> None:
     """Raise ``FabricationError`` if any cited handle is absent from the real
     signals (fail-closed). No-op on a clean or abstained diagnosis."""
-    result = check_fabrication(diagnosis, logs, commits)
+    result = check_fabrication(diagnosis, logs, commits, metrics)
     if not result.ok:
         joined = ", ".join(f"{t}:{k}" for t, k in sorted(result.fabricated))
         raise FabricationError(f"cited evidence not found in real signals: {joined}")

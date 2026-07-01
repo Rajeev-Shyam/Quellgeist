@@ -99,6 +99,41 @@ def test_loop_calls_logs_then_diagnoses():
     assert result.cited_but_unseen_handles() == set()
 
 
+def test_loop_records_metric_series_as_seen():
+    # A resource incident: the loop reads a metric series, then cites it. The
+    # metric (keyed by its `metric` name) must be recorded as SEEN (Wave 3), so
+    # citing it does not show up as cited-but-unseen.
+    def query_metrics(**kw):
+        return [{"metric": "db_connections_in_use", "unit": "count", "points": []}]
+
+    diagnose = json.dumps(
+        {
+            "action": "diagnose",
+            "diagnosis": {
+                "summary": "pool exhausted",
+                "abstained": False,
+                "hypotheses": [
+                    {
+                        "cause": "db pool maxed out",
+                        "confidence": 0.9,
+                        "evidence": [{"type": "metric", "id": "db_connections_in_use"}],
+                    }
+                ],
+            },
+        }
+    )
+    provider = FakeProvider(
+        [json.dumps({"action": "query_metrics", "args": {}}), diagnose]
+    )
+    result = run_loop(
+        provider,
+        [ToolSpec("query_metrics", "metric series", query_metrics)],
+        now="t",
+    )
+    assert ("metric", "db_connections_in_use") in result.seen_handles
+    assert result.cited_but_unseen_handles() == set()
+
+
 def test_schema_violation_then_recovery():
     bad = json.dumps(
         {

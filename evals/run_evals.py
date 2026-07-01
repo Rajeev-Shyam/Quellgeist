@@ -36,7 +36,11 @@ from quellgeist.agent.verifier import (
     default_verifier_provider,
     verify,
 )
-from quellgeist.servers.filters import filter_log_rows, recent_commits
+from quellgeist.servers.filters import (
+    filter_log_rows,
+    filter_metric_rows,
+    recent_commits,
+)
 
 FIXTURES = Path(__file__).parent / "scenarios" / "fixtures"
 
@@ -51,6 +55,9 @@ def scenario_tools(scenario: Scenario) -> list[ToolSpec]:
     def get_recent_commits(since=None, limit=None):
         return recent_commits(scenario.commits, since, limit)
 
+    def query_metrics(name=None, since=None):
+        return filter_metric_rows(scenario.metrics, name, since)
+
     return [
         ToolSpec(
             "query_logs",
@@ -61,6 +68,13 @@ def scenario_tools(scenario: Scenario) -> list[ToolSpec]:
             "get_recent_commits",
             "List recent deploys newest-first; optional since/limit; commits carry sha/ts/msg/files.",
             get_recent_commits,
+        ),
+        ToolSpec(
+            "query_metrics",
+            "Query metric time-series (memory/connections/queue depth) for resource "
+            "incidents; optional name/since; each series carries a `metric` name "
+            "(cite it), `unit`, and `points`.",
+            query_metrics,
         ),
     ]
 
@@ -103,7 +117,11 @@ def run_scenario(
     verifier_result: VerifierResult | None = None
     if verifier_provider is not None:
         verifier_result = verify(
-            diagnosis, scenario.logs, scenario.commits, verifier_provider
+            diagnosis,
+            scenario.logs,
+            scenario.commits,
+            verifier_provider,
+            scenario.metrics,
         )
         diagnosis = verifier_result.diagnosis
 
@@ -116,7 +134,7 @@ def run_scenario(
         scenario.id,
         judge(diagnosis, scenario),
         loop,
-        check_fabrication(diagnosis, scenario.logs, scenario.commits),
+        check_fabrication(diagnosis, scenario.logs, scenario.commits, scenario.metrics),
         verifier=verifier_result,
         rubric=rubric,
     )

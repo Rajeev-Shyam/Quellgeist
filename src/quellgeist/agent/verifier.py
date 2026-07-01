@@ -70,6 +70,7 @@ def _resolve_evidence(
     hyp: Hypothesis,
     logs_by_id: dict[Any, dict],
     commits_by_sha: dict[Any, dict],
+    metrics_by_id: dict[Any, dict],
 ) -> list[dict[str, Any]]:
     """Resolve each cited handle to its actual signal row (or mark it missing)."""
     rows: list[dict[str, Any]] = []
@@ -84,7 +85,12 @@ def _resolve_evidence(
             rows.append(
                 {"handle": f"commit:{ref.sha}", "found": row is not None, "row": row}
             )
-        else:  # metric handles are not a real signal source until Wave 3
+        elif ref.type == "metric":
+            row = metrics_by_id.get(ref.id)
+            rows.append(
+                {"handle": f"metric:{ref.id}", "found": row is not None, "row": row}
+            )
+        else:  # pragma: no cover - the discriminated union has no other type
             rows.append({"handle": f"{ref.type}:{ref.id}", "found": False, "row": None})
     return rows
 
@@ -118,6 +124,7 @@ def verify(
     logs: list[dict[str, Any]],
     commits: list[dict[str, Any]],
     provider: Provider,
+    metrics: list[dict[str, Any]] | None = None,
 ) -> VerifierResult:
     """Confirm cited evidence supports each hypothesis; drop the unsupported and
     force abstention if none survive. Returns the verified diagnosis + per-
@@ -128,11 +135,12 @@ def verify(
 
     logs_by_id = {r["id"]: r for r in logs if "id" in r}
     commits_by_sha = {r["sha"]: r for r in commits if "sha" in r}
+    metrics_by_id = {m["metric"]: m for m in (metrics or []) if "metric" in m}
 
     verdicts: list[HypothesisVerdict] = []
     survivors: list[Hypothesis] = []
     for hyp in diagnosis.hypotheses:
-        rows = _resolve_evidence(hyp, logs_by_id, commits_by_sha)
+        rows = _resolve_evidence(hyp, logs_by_id, commits_by_sha, metrics_by_id)
         if not any(r["found"] for r in rows):
             # nothing the hypothesis cites resolves to a real signal -> no support,
             # no need to spend a model call.

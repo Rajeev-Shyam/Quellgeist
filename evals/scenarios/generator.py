@@ -1,20 +1,23 @@
 """Scenario schema + loader + parameterised generation.
 
-A Scenario bundles an injected failure's canned signals (logs, commits) with the
-gold root cause and the gold evidence handles a correct diagnosis must cite. Wave
-1 shipped one hand-authored fixture; Wave 3 turns generation into templates ->
-variants across failure classes.
+A Scenario bundles an injected failure's canned signals (logs, commits, and --
+for resource incidents -- metric series) with the gold root cause and the gold
+evidence handles a correct diagnosis must cite. Wave 1 shipped one hand-authored
+fixture; Wave 3 turns generation into templates -> variants across failure
+classes.
 
 Two splits are generated from **disjoint parameter banks** (routes, modules,
-config keys, error signatures, commit-message templates): ``fixtures`` (the eval
-corpus) and ``holdout`` (reserved). Drawing the holdout from a DIFFERENT
-distribution than the fixtures is the whole point -- eval numbers then measure
-skill, not memorisation (DR-0003 / DR-0004 held-out constraint).
+config keys, metric names, error signatures, commit-message templates):
+``fixtures`` (the eval corpus) and ``holdout`` (reserved). Drawing the holdout
+from a DIFFERENT distribution than the fixtures is the whole point -- eval
+numbers then measure skill, not memorisation (DR-0003 / DR-0004 held-out
+constraint).
 
-Only the two log+commit classes (``bad_deploy``, ``config_error``) are generated
-here. ``resource_exhaustion`` needs metrics (a later Wave 3 increment) and would
-fail the fail-closed fabrication check until metric ids join the real-signal set
-(DR-0013 watch-out).
+Three failure classes are generated: ``bad_deploy`` and ``config_error`` (logs +
+commits) and ``resource_exhaustion`` (adds a metric series that climbs to a
+ceiling). Every resource scenario still has a culprit commit, so the deterministic
+judge's commit-citation check (DR-0017) is unchanged; the distinctive metric is a
+required gold handle, which forces the agent to actually read metrics.
 """
 
 from __future__ import annotations
@@ -42,6 +45,8 @@ class Scenario(BaseModel):
     now: str
     logs: list[dict[str, Any]] = Field(default_factory=list)
     commits: list[dict[str, Any]] = Field(default_factory=list)
+    # Metric series (resource_exhaustion only; empty for the log+commit classes).
+    metrics: list[dict[str, Any]] = Field(default_factory=list)
     gold_cause: str
     gold_evidence: list[str] = Field(
         default_factory=list
@@ -75,13 +80,16 @@ class _Bank:
     decoy_msgs: tuple[str, ...]  # innocent commit messages
     code_errors: tuple[str, ...]  # bad_deploy error signatures -- {module}
     config_errors: tuple[str, ...]  # config_error signatures -- {key}
+    resource_metrics: tuple[str, ...]  # resource metric-series names (the handle id)
+    resource_msgs: tuple[str, ...]  # resource culprit commit messages
+    resource_errors: tuple[str, ...]  # resource downstream error signatures
 
 
 _FIXTURES_BANK = _Bank(
     seed=20260701,
     id_style="fixtures",
     # bad_deploy starts at id 0002 -- 0001 is the hand-authored anchor fixture.
-    counts=(("bad_deploy", 24), ("config_error", 25)),
+    counts=(("bad_deploy", 24), ("config_error", 25), ("resource_exhaustion", 15)),
     routes=("/login", "/data", "/checkout", "/profile", "/orders"),
     modules=(
         "auth.verify_token",
@@ -124,12 +132,29 @@ _FIXTURES_BANK = _Bank(
         "missing required env var {key}",
         "ValueError: invalid literal for int() for {key}",
     ),
+    resource_metrics=(
+        "db_connections_in_use",
+        "memory_rss_bytes",
+        "worker_queue_depth",
+        "open_file_descriptors",
+        "thread_pool_active",
+    ),
+    resource_msgs=(
+        "perf: reuse connections without closing them",
+        "config: cut the connection pool in half",
+        "deploy: preload the full dataset into memory",
+    ),
+    resource_errors=(
+        "TimeoutError: could not acquire a connection",
+        "OperationalError: too many connections open",
+        "MemoryError: allocation failed",
+    ),
 )
 
 _HOLDOUT_BANK = _Bank(
     seed=20260702,
     id_style="holdout",
-    counts=(("bad_deploy", 6), ("config_error", 6)),
+    counts=(("bad_deploy", 6), ("config_error", 6), ("resource_exhaustion", 4)),
     # Every token below is disjoint from _FIXTURES_BANK: a different distribution.
     routes=("/search", "/upload", "/billing", "/notify", "/report"),
     modules=(
@@ -173,6 +198,23 @@ _HOLDOUT_BANK = _Bank(
         "environment variable {key} is undefined",
         "TypeError: int() argument must be a string for {key}",
     ),
+    resource_metrics=(
+        "cache_entries_resident",
+        "socket_conns_active",
+        "heap_used_bytes",
+        "pending_jobs_backlog",
+        "gc_pause_seconds",
+    ),
+    resource_msgs=(
+        "refactor: keep sockets open across requests",
+        "config: shrink the worker budget",
+        "deploy: buffer the whole response in RAM",
+    ),
+    resource_errors=(
+        "ResourceWarning: connection pool exhausted",
+        "BlockingIOError: no worker slots free",
+        "OSError: cannot allocate memory",
+    ),
 )
 
 _BANKS: dict[str, _Bank] = {"fixtures": _FIXTURES_BANK, "holdout": _HOLDOUT_BANK}
@@ -194,6 +236,9 @@ def distribution_tokens(split: str) -> set[str]:
         b.decoy_msgs,
         b.code_errors,
         b.config_errors,
+        b.resource_metrics,
+        b.resource_msgs,
+        b.resource_errors,
     ):
         tokens.update(group)
     return tokens
@@ -220,13 +265,34 @@ def _sha(rng: random.Random, exclude: frozenset[str] = frozenset()) -> str:
             return s
 
 
+def _resource_metric(
+    rng: random.Random, name: str, t_deploy: datetime, t_first_err: datetime
+) -> dict[str, Any]:
+    """A metric series that sits at a baseline, then climbs to a ceiling from the
+    culprit deploy onward -- the tell a resource-exhaustion diagnosis must cite."""
+    baseline = rng.randrange(3, 12)
+    ceiling = rng.choice((64, 100, 128, 200, 256))
+    points: list[dict[str, Any]] = []
+    for k in range(3):  # baseline before the deploy
+        ts = t_deploy - timedelta(minutes=(3 - k) * 2)
+        points.append({"ts": _fmt(ts), "value": baseline + rng.randrange(0, 3)})
+    for k in range(1, 5):  # climb toward the ceiling after the deploy
+        ts = t_deploy + timedelta(seconds=k * 20)
+        points.append(
+            {"ts": _fmt(ts), "value": round(baseline + (ceiling - baseline) * k / 4)}
+        )
+    points.append({"ts": _fmt(t_first_err), "value": ceiling})  # pinned at the ceiling
+    return {"metric": name, "unit": "count", "points": points}
+
+
 def _make_scenario(
     *, sid: str, failure_class: str, bank: _Bank, rng: random.Random, index: int
 ) -> Scenario:
     """Build one internally-consistent scenario: an INFO baseline, an ERROR burst
     on a route beginning shortly after a culprit deploy, plus a decoy commit and a
-    little cross-route noise. ``gold_evidence_refs`` cites the first ERROR row and
-    the culprit commit -- both real signals, so a gold diagnosis passes the judge
+    little cross-route noise. For ``resource_exhaustion`` a metric series climbing
+    to a ceiling is added and cited as the gold evidence (with the commit). The
+    gold refs always resolve to real signals, so a gold diagnosis passes the judge
     with zero fabrication (verified in tests)."""
     base = _EPOCH + timedelta(days=index, minutes=rng.randrange(0, 300))
     route = rng.choice(bank.routes)
@@ -241,6 +307,8 @@ def _make_scenario(
     t_decoy = base - timedelta(days=1, minutes=rng.randrange(0, 600))
     t_first_err = t_deploy + timedelta(seconds=gap)
 
+    metric_name = None
+    metric_series = None
     if failure_class == "bad_deploy":
         module = rng.choice(bank.modules)
         mod_file = f"demo/app/{module.split('.')[0]}.py"
@@ -262,6 +330,17 @@ def _make_scenario(
             f"Config change {culprit_sha} ({_fmt(t_deploy)[11:]}) edited {cfg} "
             f"({key}) and broke {route}; errors begin ~{gap}s later at "
             f"{_fmt(t_first_err)[11:]}."
+        )
+    elif failure_class == "resource_exhaustion":
+        metric_name = rng.choice(bank.resource_metrics)
+        metric_series = _resource_metric(rng, metric_name, t_deploy, t_first_err)
+        culprit_msg = rng.choice(bank.resource_msgs)
+        err_sig = rng.choice(bank.resource_errors)
+        culprit_files = [f"demo/app/{metric_name.split('_')[0]}.py"]
+        gold_cause = (
+            f"Resource exhaustion: deploy {culprit_sha} ({_fmt(t_deploy)[11:]}) "
+            f"-- {culprit_msg} -- drove {metric_name} to its ceiling; {route} "
+            f"errors begin ~{gap}s later at {_fmt(t_first_err)[11:]}."
         )
     else:  # pragma: no cover - guarded by the caller's fixed class list
         raise ValueError(f"unsupported failure_class {failure_class!r}")
@@ -315,17 +394,28 @@ def _make_scenario(
 
     now = _fmt(rows[-1][0] + timedelta(minutes=rng.randrange(2, 9)))
 
+    if failure_class == "resource_exhaustion":
+        metrics = [metric_series]
+        gold_refs: list[dict[str, Any]] = [
+            {"type": "metric", "id": metric_name},
+            {"type": "commit", "sha": culprit_sha},
+        ]
+    else:
+        metrics = []
+        gold_refs = [
+            {"type": "log", "id": first_error_id},
+            {"type": "commit", "sha": culprit_sha},
+        ]
+
     return Scenario(
         id=sid,
         failure_class=failure_class,
         now=now,
         logs=logs,
         commits=commits,
+        metrics=metrics,
         gold_cause=gold_cause,
-        gold_evidence_refs=[
-            {"type": "log", "id": first_error_id},
-            {"type": "commit", "sha": culprit_sha},
-        ],
+        gold_evidence_refs=gold_refs,
     )
 
 

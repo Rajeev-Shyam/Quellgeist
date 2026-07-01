@@ -66,20 +66,30 @@ def test_every_scenario_is_gold_consistent(split):
         gold = _gold(s)
         assert judge(gold, s).passed, f"{s.id}: gold diagnosis does not pass the judge"
         assert check_fabrication(
-            gold, s.logs, s.commits
+            gold, s.logs, s.commits, s.metrics
         ).ok, f"{s.id}: gold evidence not found in the real signals"
 
 
 @pytest.mark.parametrize("split", _SPLITS)
 def test_scenarios_are_well_formed(split):
     for s in generate_scenarios(split):
-        assert s.failure_class in {"bad_deploy", "config_error"}
+        assert s.failure_class in {"bad_deploy", "config_error", "resource_exhaustion"}
         assert s.logs and s.commits and s.gold_cause
         assert any(row["level"] == "ERROR" for row in s.logs)
         log_ids = [row["id"] for row in s.logs]
         assert log_ids == list(range(len(log_ids)))  # stable 0..N-1 source ids
         shas = [c["sha"] for c in s.commits]
         assert len(shas) == len(set(shas))  # unique commit shas within a scenario
+        # Only resource incidents carry metrics; when they do, the gold cites the
+        # series (so a correct diagnosis MUST read metrics), and the metric ids in
+        # the gold refs resolve to real series.
+        if s.failure_class == "resource_exhaustion":
+            assert s.metrics, f"{s.id}: resource scenario has no metric series"
+            metric_names = {m["metric"] for m in s.metrics}
+            gold_metrics = {r.id for r in s.gold_evidence_refs if r.type == "metric"}
+            assert gold_metrics and gold_metrics <= metric_names
+        else:
+            assert s.metrics == []
 
 
 def test_fixtures_and_holdout_are_disjoint_distributions():
@@ -91,10 +101,11 @@ def test_fixtures_and_holdout_are_disjoint_distributions():
 def test_expected_counts_classes_and_unique_ids():
     fixtures = generate_scenarios("fixtures")
     holdout = generate_scenarios("holdout")
-    assert len(fixtures) == 49  # + the hand-authored bad_deploy_0001 anchor = 50
-    assert len(holdout) == 12
+    assert len(fixtures) == 64  # + the hand-authored bad_deploy_0001 anchor = 65
+    assert len(holdout) == 16
+    three = {"bad_deploy", "config_error", "resource_exhaustion"}
     for corpus in (fixtures, holdout):
-        assert {s.failure_class for s in corpus} == {"bad_deploy", "config_error"}
+        assert {s.failure_class for s in corpus} == three
         ids = [s.id for s in corpus]
         assert len(ids) == len(set(ids))
     # ids are namespaced by split so the two corpora never collide on disk.
