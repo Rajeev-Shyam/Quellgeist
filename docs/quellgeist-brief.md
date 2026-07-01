@@ -196,8 +196,8 @@ Registries list **MCP servers**; Quellgeist is mainly an **agent that consumes s
 1. **Wave 0 spike (done):** confirmed a 4B can orchestrate the loop; default reasoner = Qwen3-4B (escalation Qwen3-8B) — see DR-0008.
 2. **Wave 1 (done):** thin vertical slice — bad-deploy diagnosis end-to-end + eval/CI skeleton.
 3. **Wave 2 (built):** reliability core — verifier pass + fabrication check + abstention + LLM-judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation (a human gold subset) + a reliability *rate* carry into Wave 3.
-4. **Wave 3 (current):** breadth — classes 2 & 3 + metrics; parameterised generation toward ~50 scenarios.
-5. **Wave 4:** cost/fine-tune (local PoC → cloud training → comparison).
+4. **Wave 3 (done):** breadth — 3 classes + metrics across a 65-scenario suite; first full rate **61/65 · 0 fabricated** (Gemma-4-31B stand-in); judge validated at kappa 0.81 (DR-0018).
+5. **Wave 4 (current):** cost/fine-tune — base-Qwen3-4B baseline measured: **0/65 fixtures · 0/16 holdout · zero fabrication** (DR-0019, the floor to beat); next: training data → QLoRA PoC → cloud training → comparison on the holdout.
 6. **Wave 5:** polish & ship — postmortem file render, docs, case study, security pass, registry + CI, launch.
 7. **Wave 6 (cut-first):** resolution-verification loop.
 

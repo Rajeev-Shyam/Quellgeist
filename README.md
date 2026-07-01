@@ -9,10 +9,10 @@
 
 Quellgeist is a model-agnostic AI agent for first-line production-incident triage.
 It runs a legible JSON-action ReAct loop over read-only tools (structured logs +
-recent deploys), then emits a structured **Diagnosis**: confidence-ranked
-root-cause hypotheses, each backed by a structured evidence handle
-(`LogRef.id` / `CommitRef.sha`) the agent actually saw — never free text. Two
-ideas set it apart:
+recent deploys + metric time-series), then emits a structured **Diagnosis**:
+confidence-ranked root-cause hypotheses, each backed by a structured evidence
+handle (`LogRef.id` / `CommitRef.sha` / `MetricRef.id`) the agent actually saw —
+never free text. Two ideas set it apart:
 
 - **Cite-by-structured-handle.** Evidence is a checkable handle, not a sentence,
   so a fabricated citation is *measurable* and **deterministically rejected** by a
@@ -20,14 +20,16 @@ ideas set it apart:
 - **Abstain-over-hallucinate.** A confidently-stated wrong cause is the worst
   possible answer, so *"insufficient evidence"* is a first-class outcome.
 
-> **Status: WIP — Wave 3 complete (breadth + a measured reliability rate).** All
-> three failure classes (bad deploy · config/env · resource exhaustion) generate
-> and gate, across a 65-scenario suite. First full real-model run: **61/65 passed,
-> 0 fabricated** (Cerebras Gemma-4-31B; `resource_exhaustion` a clean 15/15), and
-> the advisory **LLM-judge is validated** at **Cohen's kappa 0.81** on a
-> human-labelled subset. When the agent misses it's *incomplete* or *too cautious*,
-> never confidently fabricating. Next: the cost/fine-tune comparison (Wave 4). See
-> [Status & roadmap](#status--roadmap) · [reliability case study](docs/case-studies/wave3-reliability-rate.md).
+> **Status: WIP — Wave 4 in progress (cost / fine-tune).** All three failure
+> classes generate and gate across a 65-scenario suite; the best full run is
+> **61/65 passed, 0 fabricated** (Cerebras Gemma-4-31B; `resource_exhaustion` a
+> clean 15/15), and the advisory **LLM-judge is validated** at **Cohen's kappa
+> 0.81**. The Wave-4 baseline is now measured: the intended local reasoner (base
+> Qwen3-4B via Ollama) scores **0/65 fixtures · 0/16 holdout — with zero
+> fabrication across all 81**: reliably safe, not yet useful, the honest floor
+> the fine-tune must beat (DR-0019). When this agent misses it's *incomplete* or
+> *too cautious*, never confidently fabricating. See
+> [Status & roadmap](#status--roadmap) · [baseline case study](docs/case-studies/wave4-qwen-baseline.md).
 
 ## Why it's different
 
@@ -62,7 +64,7 @@ rendered deterministically from a fixture.
 
 ## Architecture
 
-A custom, legible loop is the orchestration layer; the two read-only tools are
+A custom, legible loop is the orchestration layer; the three read-only tools are
 the evidence interface; the `Diagnosis` schema is the contract that the
 postmortem renderer and the eval judge both read.
 
@@ -77,19 +79,21 @@ flowchart TD
 
     loop -- "query_logs" --> logs["logs tool<br/>structured JSONL, stable ids"]
     loop -- "get_recent_commits" --> commits["commits tool<br/>deploy_log.json, shas"]
+    loop -- "query_metrics" --> metrics["metrics tool<br/>time-series, named series"]
     logs -- "rows + ids" --> loop
     commits -- "commits + shas" --> loop
+    metrics -- "series + names" --> loop
 
-    loop --> diag["Diagnosis (schema.py)<br/>ranked hypotheses citing<br/>LogRef.id / CommitRef.sha, or abstains"]
+    loop --> diag["Diagnosis (schema.py)<br/>ranked hypotheses citing<br/>LogRef.id / CommitRef.sha / MetricRef.id, or abstains"]
     diag --> pm["postmortem renderer<br/>deterministic Markdown"]
     diag --> judge["eval judge<br/>fixture scenarios, CI gate"]
 ```
 
-Both tools are also exposed as **MCP servers** over stdio
-(`python -m quellgeist.servers.logs_mcp`, `…commits_mcp`). The agent currently
-reuses the same tool *functions* in-process behind a `ToolSpec` registry; a
-stdio MCP-*client* path (the agent driving the servers over the wire) is on the
-roadmap (DR-0010).
+All three tools are also exposed as **MCP servers** over stdio
+(`python -m quellgeist.servers.logs_mcp`, `…commits_mcp`, `…metrics_mcp`). The
+agent currently reuses the same tool *functions* in-process behind a `ToolSpec`
+registry; a stdio MCP-*client* path (the agent driving the servers over the
+wire) is on the roadmap (DR-0010).
 
 ## Example session
 
@@ -152,7 +156,16 @@ keys are read from the environment by LiteLLM; nothing is stored in the repo.
 
 ```bash
 export QG_MODEL="gemini/gemini-3.5-flash"
-export GEMINI_API_KEY="…"        # or run a local model via Ollama
+export GEMINI_API_KEY="…"
+uv run quellgeist diagnose --show-trace
+```
+
+Or fully local and offline via [Ollama](https://ollama.com) — the intended home
+default (DR-0008; exact artifact pinned in DR-0019), no API key involved:
+
+```bash
+ollama pull qwen3:4b-instruct-2507-q4_K_M
+export QG_MODEL="ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
 uv run quellgeist diagnose --show-trace
 ```
 
@@ -205,7 +218,7 @@ The full decision history lives in the
 | 1 | Bad-deploy slice: demo → break → diagnose → postmortem; eval harness + CI | ✅ done — spine built & unit-tested |
 | 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ✅ built — keyless deterministic gate + opt-in verifier/judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation + a reliability *rate* carry into Wave 3 |
 | 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ✅ done — 3 classes across a 65-scenario suite; first full run **61/65, 0 fabricated**; judge validated (kappa 0.81). See the [reliability](docs/case-studies/wave3-reliability-rate.md) + [judge](docs/case-studies/wave3-judge-validation.md) case studies |
-| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | 🚧 **next** — measure the intended default reasoner (Qwen3-4B) on this harness |
+| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | 🚧 **in progress** — baseline measured: base Qwen3-4B **0/65 fixtures · 0/16 holdout · 0 fabricated** — all safe abstentions, the floor the fine-tune must beat (DR-0019, [case study](docs/case-studies/wave4-qwen-baseline.md)) |
 | 5 | Polish & ship: HTML render, security pass, MCP registry, launch | ⏳ deferred |
 | 6 | Resolution-verification loop | ⏳ cut-first |
 
@@ -214,7 +227,7 @@ Deferred features carry `NotImplementedError` stubs on purpose (e.g.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **126 tests** (ruff +
+The deterministic CI gate is the reliability contract: **128 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
 cite-based judge gate, the verifier and advisory LLM-judge, parameterised
