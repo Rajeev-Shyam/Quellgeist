@@ -175,7 +175,12 @@ def run_all(
 
 
 def _load_all_fixtures() -> list[Scenario]:
-    return [load_scenario(p) for p in sorted(FIXTURES.glob("*.json"))]
+    # QG_SCENARIOS_DIR points the run at a different scenario set -- notably
+    # evals/scenarios/holdout/, the reserved different-distribution set
+    # (DR-0003). The holdout is deliberately NOT globbed by default so casual
+    # runs and prompt iteration never touch it; selecting it is an explicit act.
+    directory = Path(os.environ.get("QG_SCENARIOS_DIR") or FIXTURES)
+    return [load_scenario(p) for p in sorted(directory.glob("*.json"))]
 
 
 def main(
@@ -186,7 +191,8 @@ def main(
 ) -> int:
     scenarios = _load_all_fixtures()
     if not scenarios:
-        print("no fixtures found", file=sys.stderr)
+        where = os.environ.get("QG_SCENARIOS_DIR") or str(FIXTURES)
+        print(f"no scenarios found in {where}", file=sys.stderr)
         return 1
     # Opt-in reliability layers, key-gated; model from QG_VERIFIER_MODEL /
     # QG_JUDGE_MODEL (fall back to QG_MODEL). Off unless explicitly enabled.

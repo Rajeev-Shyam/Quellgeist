@@ -219,6 +219,19 @@ def test_run_all_returns_one_on_fabrication(capsys):
     assert "1 with fabricated evidence" in out
 
 
+def test_scenarios_dir_env_selects_the_holdout_set(monkeypatch):
+    """QG_SCENARIOS_DIR redirects the run to another scenario set -- the
+    explicit opt-in for the reserved different-distribution holdout (DR-0003),
+    which the default fixtures glob must never touch."""
+    holdout = Path(__file__).parents[2] / "evals" / "scenarios" / "holdout"
+    monkeypatch.setenv("QG_SCENARIOS_DIR", str(holdout))
+    scenarios = run_evals._load_all_fixtures()
+    assert len(scenarios) == 16  # the reserved set, pinned by test_generator
+    assert {s.id for s in scenarios}.isdisjoint(
+        {p.stem for p in (holdout.parent / "fixtures").glob("*.json")}
+    )
+
+
 def test_main_offline_returns_zero(monkeypatch):
     # main() globs ALL fixtures and builds a real provider; swap in a gold-aware
     # fake that answers each scenario correctly from its own gold, so the entry
