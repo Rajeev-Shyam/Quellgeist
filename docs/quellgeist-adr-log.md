@@ -24,6 +24,7 @@ A **living, flexible** log of the load-bearing decisions for this project. Recor
 | DR-0015 | CI model eval is out-of-band + quota-tolerant (skip≠fail); default model pinned/corrected to gemini-3.5-flash | Accepted (provisional) — refines DR-0012 | After a non-walled key exists |
 | DR-0016 | Verifier + LLM-judge BUILT; gemini-3.5-flash provisional verifier/judge model; free tier viable with client-side pacing; judge advisory | Accepted (provisional) — completes DR-0014, refines DR-0012 | Wave 4 (Qwen reasoner + Claude-verifier) / human gold subset |
 | DR-0017 | Keyword judge `correct_cause` is cite-based, not prose-based (fixes a first-run false-negative); eval reasoner provider = Groq (Gemini free tier unusable from cloud) | Accepted (provisional) — refines DR-0009/DR-0016 | Wave 3 (broader fixtures) |
+| DR-0018 | Judge validation: human-labelled gold subset + agreement harness (judge ≠ reasoner); rubric numbers stay advisory until agreement is measured + acceptable | Accepted (provisional) — implements DR-0003, refines DR-0016/DR-0017 | When agreement is measured on a real judge |
 
 ---
 
@@ -422,3 +423,22 @@ Keyword-matching the cause prose against the gold cause (rejected: brittle, and 
 With the fix the first real diagnosis **passes** (`correct_cause` via citation + `evidence_matches` + zero fabrication). **Also recorded — self-grading caveat:** in that run the LLM-judge was the *same model* as the reasoner (`QG_JUDGE_MODEL` inherited `QG_MODEL`), so its `rubric=1.00` is self-assessment, not independent validation — set `QG_JUDGE_MODEL` to a different/stronger model, and keep rubric scores advisory until a human gold subset (DR-0003). This is the "validate the judge" discipline working: a real run surfaced a judge false-negative, caught by reading the actual diagnosis. Refines DR-0009 and DR-0016.
 
 **Addendum (CI):** merging the fix to `main` reddened `eval.yml` with `400 API_KEY_INVALID` — the Gemini Actions secret was a **rotated/stale key**. Two follow-ups keep the model eval a non-reddening reporting job: (1) the harness now treats a **credential error** (`is_auth_error` → `AuthenticationError`/`PermissionDeniedError`) as a **SKIP**, not a failure — the DR-0015 skip previously covered only *availability* (quota/503/timeout), not *authentication*, so a stale secret could redden a non-gating job; (2) **CI's eval reasoner is now Groq** (`groq/llama-3.3-70b-versatile`, gated on `GROQ_API_KEY`) — Gemini's free tier failed from cloud CI five ways (429 → 503 → Timeout → 503 → invalid-key), Groq completes it. Both are config/classification changes; the deterministic gate is untouched.
+
+# DR-0018 — Judge validation: human-labelled gold subset + agreement harness (implements DR-0003)
+
+**Status:** Accepted (provisional) · **Date:** 2026-07-01 · **Revisit at:** when agreement is measured on a real judge model / a broader subset
+
+## Context
+The LLM-judge (DR-0016) is advisory and its rubric scores are explicitly NOT to be quoted until validated against a **human-labelled gold subset** (DR-0003) — otherwise the score is circular, and worse, *self-graded* when the judge shares the reasoner model (the DR-0017 first-run `rubric=1.00` caveat). Wave 3 now has the three-class corpus, so it is time to build the validation.
+
+## Decision
+1. **Human-labelled gold subset** (`evals/judge_validation/labelled_cases.json`): a small, hand-authored, self-contained set of `(scenario, diagnosis, human verdict)` cases spanning the three failure classes and the discriminating failure modes — correct, wrong-cause, weak/unrelated evidence, fabricated evidence, and abstention-despite-a-clear-signal. The human labels (`correct_cause`, `evidence_valid`, and `verdict` = their AND, matching `RubricVerdict.passed`) are the maintainer's ground truth, reviewed at merge. The set is **independent of the generated eval corpus** (its own hand-authored scenarios) so it doesn't just re-measure the generator.
+2. **Agreement harness** (`evals/validate_judge.py`): runs the LLM-judge over the subset and reports judge-vs-human agreement — overall verdict, per rubric field (`correct_cause`, `evidence_valid`), and **Cohen's kappa** (agreement corrected for chance). **Reporting only** — it never gates. Key-gated and skip-tolerant like the eval (DR-0012/DR-0015).
+3. **Judge ≠ reasoner:** the harness uses `QG_JUDGE_MODEL` and warns loudly when it is unset (the judge then falls back to the reasoner → self-grading, DR-0017). A trustworthy number needs a different / stronger judge model; the manual `judge-validation.yml` workflow runs it (~11 judge calls — quota-light).
+4. **Bar:** rubric scores stay **advisory** until agreement on this subset is both **measured** (with a distinct judge) and **acceptable** (target: high verdict agreement + Cohen's kappa ≥ ~0.6, "substantial"). Until then, no rubric number is quoted as validated.
+
+## Considered
+Validating on the eval fixtures themselves (rejected: circular — the judge would be measured on the same distribution the generator produces, against generator-authored "gold", not human labels); making the LLM-judge a gate once validated (rejected for now — it stays advisory; the keyless deterministic judge + fabrication check remain the gate, DR-0012); a numeric agreement threshold that reddens CI (rejected — a model-calling job must be reporting/skip-tolerant, not a gate).
+
+## Consequence
+The mechanism to trust (or distrust) the LLM-judge now exists and is unit-tested offline (scripted fake judges: perfect-agreement → kappa 1.0, inverted → below chance). The actual agreement **number** requires a real judge run with `QG_JUDGE_MODEL` set to a model ≠ the Groq `llama-3.3-70b` reasoner. Implements DR-0003; refines DR-0016 and DR-0017. **No rubric number is quoted as validated yet.**
