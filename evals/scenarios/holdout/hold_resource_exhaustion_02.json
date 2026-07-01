@@ -1,0 +1,132 @@
+{
+  "id": "hold_resource_exhaustion_02",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-14T12:51:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-14T12:41:00Z",
+      "level": "INFO",
+      "route": "/notify",
+      "status": 200,
+      "msg": "/notify ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-14T12:43:00Z",
+      "level": "INFO",
+      "route": "/notify",
+      "status": 200,
+      "msg": "/notify ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-14T12:45:15Z",
+      "level": "ERROR",
+      "route": "/notify",
+      "status": 500,
+      "msg": "ResourceWarning: connection pool exhausted"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-14T12:45:20Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-14T12:45:30Z",
+      "level": "ERROR",
+      "route": "/notify",
+      "status": 500,
+      "msg": "ResourceWarning: connection pool exhausted"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-14T12:45:45Z",
+      "level": "ERROR",
+      "route": "/notify",
+      "status": 500,
+      "msg": "ResourceWarning: connection pool exhausted"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-14T12:46:00Z",
+      "level": "ERROR",
+      "route": "/notify",
+      "status": 500,
+      "msg": "ResourceWarning: connection pool exhausted"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "77fdeda",
+      "ts": "2026-05-13T05:58:00Z",
+      "msg": "ci: cache dependencies",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "542cb8f",
+      "ts": "2026-05-14T12:45:00Z",
+      "msg": "config: shrink the worker budget",
+      "files": [
+        "demo/app/heap.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "heap_used_bytes",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-14T12:39:00Z",
+          "value": 8
+        },
+        {
+          "ts": "2026-05-14T12:41:00Z",
+          "value": 8
+        },
+        {
+          "ts": "2026-05-14T12:43:00Z",
+          "value": 9
+        },
+        {
+          "ts": "2026-05-14T12:45:20Z",
+          "value": 21
+        },
+        {
+          "ts": "2026-05-14T12:45:40Z",
+          "value": 36
+        },
+        {
+          "ts": "2026-05-14T12:46:00Z",
+          "value": 50
+        },
+        {
+          "ts": "2026-05-14T12:46:20Z",
+          "value": 64
+        },
+        {
+          "ts": "2026-05-14T12:45:15Z",
+          "value": 64
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy 542cb8f (12:45:00Z) -- config: shrink the worker budget -- drove heap_used_bytes to its ceiling; /notify errors begin ~15s later at 12:45:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "heap_used_bytes"
+    },
+    {
+      "type": "commit",
+      "sha": "542cb8f"
+    }
+  ]
+}

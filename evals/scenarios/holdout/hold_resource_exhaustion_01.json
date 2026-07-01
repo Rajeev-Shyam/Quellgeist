@@ -1,0 +1,116 @@
+{
+  "id": "hold_resource_exhaustion_01",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-13T10:11:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-13T10:01:00Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-13T10:03:00Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-13T10:05:20Z",
+      "level": "ERROR",
+      "route": "/billing",
+      "status": 500,
+      "msg": "OSError: cannot allocate memory"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-13T10:05:25Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-13T10:05:40Z",
+      "level": "ERROR",
+      "route": "/billing",
+      "status": 500,
+      "msg": "OSError: cannot allocate memory"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "1a115c0",
+      "ts": "2026-05-12T09:56:00Z",
+      "msg": "docs: fix changelog",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "ec9c57b",
+      "ts": "2026-05-13T10:05:00Z",
+      "msg": "refactor: keep sockets open across requests",
+      "files": [
+        "demo/app/heap.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "heap_used_bytes",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-13T09:59:00Z",
+          "value": 6
+        },
+        {
+          "ts": "2026-05-13T10:01:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-05-13T10:03:00Z",
+          "value": 5
+        },
+        {
+          "ts": "2026-05-13T10:05:20Z",
+          "value": 36
+        },
+        {
+          "ts": "2026-05-13T10:05:40Z",
+          "value": 66
+        },
+        {
+          "ts": "2026-05-13T10:06:00Z",
+          "value": 97
+        },
+        {
+          "ts": "2026-05-13T10:06:20Z",
+          "value": 128
+        },
+        {
+          "ts": "2026-05-13T10:05:20Z",
+          "value": 128
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy ec9c57b (10:05:00Z) -- refactor: keep sockets open across requests -- drove heap_used_bytes to its ceiling; /billing errors begin ~20s later at 10:05:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "heap_used_bytes"
+    },
+    {
+      "type": "commit",
+      "sha": "ec9c57b"
+    }
+  ]
+}

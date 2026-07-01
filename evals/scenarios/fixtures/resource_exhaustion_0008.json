@@ -1,0 +1,132 @@
+{
+  "id": "resource_exhaustion_0008",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-06-26T12:15:20Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-26T12:03:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-26T12:05:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-26T12:07:20Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "MemoryError: allocation failed"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-26T12:07:25Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-26T12:07:40Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "MemoryError: allocation failed"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-26T12:08:00Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "MemoryError: allocation failed"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-26T12:08:20Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "MemoryError: allocation failed"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "fd89676",
+      "ts": "2026-06-25T03:40:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "d73a76a",
+      "ts": "2026-06-26T12:07:00Z",
+      "msg": "perf: reuse connections without closing them",
+      "files": [
+        "demo/app/db.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "db_connections_in_use",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-06-26T12:01:00Z",
+          "value": 8
+        },
+        {
+          "ts": "2026-06-26T12:03:00Z",
+          "value": 9
+        },
+        {
+          "ts": "2026-06-26T12:05:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-06-26T12:07:20Z",
+          "value": 69
+        },
+        {
+          "ts": "2026-06-26T12:07:40Z",
+          "value": 132
+        },
+        {
+          "ts": "2026-06-26T12:08:00Z",
+          "value": 194
+        },
+        {
+          "ts": "2026-06-26T12:08:20Z",
+          "value": 256
+        },
+        {
+          "ts": "2026-06-26T12:07:20Z",
+          "value": 256
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy d73a76a (12:07:00Z) -- perf: reuse connections without closing them -- drove db_connections_in_use to its ceiling; /profile errors begin ~20s later at 12:07:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "db_connections_in_use"
+    },
+    {
+      "type": "commit",
+      "sha": "d73a76a"
+    }
+  ]
+}

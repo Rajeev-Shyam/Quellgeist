@@ -1,0 +1,116 @@
+{
+  "id": "resource_exhaustion_0013",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-07-01T10:21:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-07-01T10:14:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-07-01T10:16:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-07-01T10:18:45Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 3,
+      "ts": "2026-07-01T10:18:50Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-07-01T10:19:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "e2e9505",
+      "ts": "2026-06-30T06:23:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "2e2a624",
+      "ts": "2026-07-01T10:18:00Z",
+      "msg": "config: cut the connection pool in half",
+      "files": [
+        "demo/app/memory.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "memory_rss_bytes",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-07-01T10:12:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-07-01T10:14:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-07-01T10:16:00Z",
+          "value": 5
+        },
+        {
+          "ts": "2026-07-01T10:18:20Z",
+          "value": 68
+        },
+        {
+          "ts": "2026-07-01T10:18:40Z",
+          "value": 130
+        },
+        {
+          "ts": "2026-07-01T10:19:00Z",
+          "value": 193
+        },
+        {
+          "ts": "2026-07-01T10:19:20Z",
+          "value": 256
+        },
+        {
+          "ts": "2026-07-01T10:18:45Z",
+          "value": 256
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy 2e2a624 (10:18:00Z) -- config: cut the connection pool in half -- drove memory_rss_bytes to its ceiling; /login errors begin ~45s later at 10:18:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "memory_rss_bytes"
+    },
+    {
+      "type": "commit",
+      "sha": "2e2a624"
+    }
+  ]
+}

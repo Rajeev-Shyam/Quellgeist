@@ -1,0 +1,124 @@
+{
+  "id": "hold_resource_exhaustion_04",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-16T13:07:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-16T12:53:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-16T12:55:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-16T12:57:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-16T12:59:45Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "OSError: cannot allocate memory"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-16T12:59:50Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-16T13:00:30Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "OSError: cannot allocate memory"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "d0f8f8f",
+      "ts": "2026-05-15T09:19:00Z",
+      "msg": "refactor: rename helpers",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "27dc478",
+      "ts": "2026-05-16T12:59:00Z",
+      "msg": "deploy: buffer the whole response in RAM",
+      "files": [
+        "demo/app/gc.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "gc_pause_seconds",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-16T12:53:00Z",
+          "value": 6
+        },
+        {
+          "ts": "2026-05-16T12:55:00Z",
+          "value": 8
+        },
+        {
+          "ts": "2026-05-16T12:57:00Z",
+          "value": 8
+        },
+        {
+          "ts": "2026-05-16T12:59:20Z",
+          "value": 54
+        },
+        {
+          "ts": "2026-05-16T12:59:40Z",
+          "value": 103
+        },
+        {
+          "ts": "2026-05-16T13:00:00Z",
+          "value": 152
+        },
+        {
+          "ts": "2026-05-16T13:00:20Z",
+          "value": 200
+        },
+        {
+          "ts": "2026-05-16T12:59:45Z",
+          "value": 200
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy 27dc478 (12:59:00Z) -- deploy: buffer the whole response in RAM -- drove gc_pause_seconds to its ceiling; /search errors begin ~45s later at 12:59:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "gc_pause_seconds"
+    },
+    {
+      "type": "commit",
+      "sha": "27dc478"
+    }
+  ]
+}
