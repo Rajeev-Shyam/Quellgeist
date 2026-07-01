@@ -1,0 +1,92 @@
+{
+  "id": "bad_deploy_0008",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-07T12:14:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-07T12:06:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-07T12:08:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-07T12:10:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'user' in cart.total"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-07T12:10:35Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-07T12:11:00Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'user' in cart.total"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-07T12:11:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'user' in cart.total"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-07T12:12:00Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'user' in cart.total"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "45432c3",
+      "ts": "2026-05-06T08:26:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "c378319",
+      "ts": "2026-05-07T12:10:00Z",
+      "msg": "deploy: refactor cart token parsing",
+      "files": [
+        "demo/app/cart.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy c378319 (12:10:00Z) touched demo/app/cart.py and introduced an error in cart.total; /login 500s begin ~30s later at 12:10:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "c378319"
+    }
+  ]
+}

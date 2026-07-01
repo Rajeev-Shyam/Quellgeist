@@ -1,0 +1,92 @@
+{
+  "id": "hold_bad_deploy_04",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-04T10:38:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-04T10:24:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-04T10:26:00Z",
+      "level": "INFO",
+      "route": "/report",
+      "status": 200,
+      "msg": "/report ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-04T10:28:45Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "IndexError: list index out of range in cache.fetch"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-04T10:28:50Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-04T10:29:30Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "IndexError: list index out of range in cache.fetch"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-04T10:30:15Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "IndexError: list index out of range in cache.fetch"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-04T10:31:00Z",
+      "level": "ERROR",
+      "route": "/report",
+      "status": 500,
+      "msg": "IndexError: list index out of range in cache.fetch"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "3f613f9",
+      "ts": "2026-05-03T01:09:00Z",
+      "msg": "test: quiet a flaky case",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "8801d92",
+      "ts": "2026-05-04T10:28:00Z",
+      "msg": "deploy: split cache module",
+      "files": [
+        "demo/app/cache.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 8801d92 (10:28:00Z) touched demo/app/cache.py and introduced an error in cache.fetch; /report 500s begin ~45s later at 10:28:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "8801d92"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "id": "config_error_0010",
+  "failure_class": "config_error",
+  "now": "2026-06-03T08:50:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-03T08:38:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-03T08:40:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-03T08:42:20Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-03T08:42:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-03T08:42:40Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-03T08:43:00Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "missing required env var REDIS_HOST"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "e84d884",
+      "ts": "2026-06-02T01:58:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "c110e91",
+      "ts": "2026-06-03T08:42:00Z",
+      "msg": "chore: update REDIS_HOST for prod",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change c110e91 (08:42:00Z) edited config/settings.py (REDIS_HOST) and broke /login; errors begin ~20s later at 08:42:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "c110e91"
+    }
+  ]
+}

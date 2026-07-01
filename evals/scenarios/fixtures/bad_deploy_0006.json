@@ -1,0 +1,76 @@
+{
+  "id": "bad_deploy_0006",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-05T11:49:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-05T11:42:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-05T11:44:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-05T11:46:15Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in billing.charge"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-05T11:46:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-05T11:46:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in billing.charge"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "6f65803",
+      "ts": "2026-05-04T03:49:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "19d8767",
+      "ts": "2026-05-05T11:46:00Z",
+      "msg": "deploy: rewrite billing handler",
+      "files": [
+        "demo/app/billing.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 19d8767 (11:46:00Z) touched demo/app/billing.py and introduced an error in billing.charge; /checkout 500s begin ~15s later at 11:46:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "19d8767"
+    }
+  ]
+}

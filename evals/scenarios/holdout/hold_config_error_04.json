@@ -1,0 +1,76 @@
+{
+  "id": "hold_config_error_04",
+  "failure_class": "config_error",
+  "now": "2026-05-10T10:22:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-10T10:12:00Z",
+      "level": "INFO",
+      "route": "/notify",
+      "status": 200,
+      "msg": "/notify ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-10T10:14:00Z",
+      "level": "INFO",
+      "route": "/notify",
+      "status": 200,
+      "msg": "/notify ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-10T10:16:30Z",
+      "level": "ERROR",
+      "route": "/notify",
+      "status": 500,
+      "msg": "environment variable SMTP_HOST is undefined"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-10T10:16:35Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-10T10:17:00Z",
+      "level": "ERROR",
+      "route": "/notify",
+      "status": 500,
+      "msg": "environment variable SMTP_HOST is undefined"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "599c9ec",
+      "ts": "2026-05-09T02:07:00Z",
+      "msg": "test: quiet a flaky case",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "effe07c",
+      "ts": "2026-05-10T10:16:00Z",
+      "msg": "chore: adjust SMTP_HOST for scale",
+      "files": [
+        "env/production.env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change effe07c (10:16:00Z) edited env/production.env (SMTP_HOST) and broke /notify; errors begin ~30s later at 10:16:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "effe07c"
+    }
+  ]
+}

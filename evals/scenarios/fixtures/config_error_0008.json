@@ -1,0 +1,100 @@
+{
+  "id": "config_error_0008",
+  "failure_class": "config_error",
+  "now": "2026-06-01T09:28:20Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-01T09:16:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-01T09:18:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-01T09:20:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-01T09:22:20Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for SESSION_TTL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-01T09:22:25Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-01T09:22:40Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for SESSION_TTL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-01T09:23:00Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for SESSION_TTL"
+    },
+    {
+      "id": 7,
+      "ts": "2026-06-01T09:23:20Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for SESSION_TTL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "f0febd9",
+      "ts": "2026-05-31T02:09:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "a3105d5",
+      "ts": "2026-06-01T09:22:00Z",
+      "msg": "config: change SESSION_TTL default",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change a3105d5 (09:22:00Z) edited config/settings.py (SESSION_TTL) and broke /data; errors begin ~20s later at 09:22:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "a3105d5"
+    }
+  ]
+}

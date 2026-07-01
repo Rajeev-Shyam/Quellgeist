@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0013",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-12T12:37:15Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-12T12:28:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-12T12:30:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-12T12:32:45Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in orders.place"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-12T12:32:50Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-12T12:33:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in orders.place"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-12T12:34:15Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in orders.place"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "77baa77",
+      "ts": "2026-05-11T12:26:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "bf29014",
+      "ts": "2026-05-12T12:32:00Z",
+      "msg": "deploy: rewrite orders handler",
+      "files": [
+        "demo/app/orders.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy bf29014 (12:32:00Z) touched demo/app/orders.py and introduced an error in orders.place; /login 500s begin ~45s later at 12:32:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "bf29014"
+    }
+  ]
+}

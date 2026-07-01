@@ -1,0 +1,76 @@
+{
+  "id": "config_error_0001",
+  "failure_class": "config_error",
+  "now": "2026-05-25T09:54:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-25T09:48:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-25T09:50:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-25T09:52:15Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-25T09:52:20Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-25T09:52:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "98a077c",
+      "ts": "2026-05-24T02:56:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "bdc633c",
+      "ts": "2026-05-25T09:52:00Z",
+      "msg": "chore: update DATABASE_URL for prod",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change bdc633c (09:52:00Z) edited .env (DATABASE_URL) and broke /orders; errors begin ~15s later at 09:52:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "bdc633c"
+    }
+  ]
+}

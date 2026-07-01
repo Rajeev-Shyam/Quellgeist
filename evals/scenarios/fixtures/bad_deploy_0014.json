@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0014",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-13T11:10:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-13T11:01:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-13T11:03:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-13T11:05:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-13T11:07:20Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-13T11:07:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-13T11:07:40Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "d9daf14",
+      "ts": "2026-05-12T05:55:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "ef1eefd",
+      "ts": "2026-05-13T11:07:00Z",
+      "msg": "deploy: optimise session hot path",
+      "files": [
+        "demo/app/session.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy ef1eefd (11:07:00Z) touched demo/app/session.py and introduced an error in session.load; /profile 500s begin ~20s later at 11:07:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "ef1eefd"
+    }
+  ]
+}

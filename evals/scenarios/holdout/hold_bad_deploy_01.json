@@ -1,0 +1,100 @@
+{
+  "id": "hold_bad_deploy_01",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-01T09:17:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-01T09:01:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-01T09:03:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-01T09:05:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-01T09:07:45Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in report.render"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-01T09:07:50Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-01T09:08:30Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in report.render"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-01T09:09:15Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in report.render"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-01T09:10:00Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "RecursionError: maximum recursion depth exceeded in report.render"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "5572816",
+      "ts": "2026-04-29T23:38:00Z",
+      "msg": "docs: fix changelog",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "9639a69",
+      "ts": "2026-05-01T09:07:00Z",
+      "msg": "deploy: split report module",
+      "files": [
+        "demo/app/report.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 9639a69 (09:07:00Z) touched demo/app/report.py and introduced an error in report.render; /search 500s begin ~45s later at 09:07:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "9639a69"
+    }
+  ]
+}

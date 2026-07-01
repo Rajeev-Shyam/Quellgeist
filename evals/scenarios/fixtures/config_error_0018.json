@@ -1,0 +1,84 @@
+{
+  "id": "config_error_0018",
+  "failure_class": "config_error",
+  "now": "2026-06-11T08:56:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-11T08:42:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-11T08:44:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-11T08:46:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-11T08:48:20Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'SESSION_TTL' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-11T08:48:25Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-11T08:48:40Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'SESSION_TTL' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "c68e49e",
+      "ts": "2026-06-10T02:27:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "ba3c81f",
+      "ts": "2026-06-11T08:48:00Z",
+      "msg": "config: change SESSION_TTL default",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change ba3c81f (08:48:00Z) edited .env (SESSION_TTL) and broke /login; errors begin ~20s later at 08:48:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "ba3c81f"
+    }
+  ]
+}

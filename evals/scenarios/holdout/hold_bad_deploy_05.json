@@ -1,0 +1,92 @@
+{
+  "id": "hold_bad_deploy_05",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-05T12:04:45Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-05T11:50:00Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-05T11:52:00Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-05T11:54:00Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-05T11:56:15Z",
+      "level": "ERROR",
+      "route": "/billing",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not iterable in queue.enqueue"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-05T11:56:20Z",
+      "level": "INFO",
+      "route": "/notify",
+      "status": 200,
+      "msg": "/notify ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-05T11:56:30Z",
+      "level": "ERROR",
+      "route": "/billing",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not iterable in queue.enqueue"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-05T11:56:45Z",
+      "level": "ERROR",
+      "route": "/billing",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not iterable in queue.enqueue"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "83cba1f",
+      "ts": "2026-05-04T05:01:00Z",
+      "msg": "ci: cache dependencies",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "521cf0f",
+      "ts": "2026-05-05T11:56:00Z",
+      "msg": "deploy: inline queue cache",
+      "files": [
+        "demo/app/queue.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 521cf0f (11:56:00Z) touched demo/app/queue.py and introduced an error in queue.enqueue; /billing 500s begin ~15s later at 11:56:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "521cf0f"
+    }
+  ]
+}

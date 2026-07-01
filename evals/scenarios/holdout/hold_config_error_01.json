@@ -1,0 +1,84 @@
+{
+  "id": "hold_config_error_01",
+  "failure_class": "config_error",
+  "now": "2026-05-07T12:39:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-07T12:30:00Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-07T12:32:00Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-07T12:34:00Z",
+      "level": "INFO",
+      "route": "/upload",
+      "status": 200,
+      "msg": "/upload ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-07T12:36:20Z",
+      "level": "ERROR",
+      "route": "/upload",
+      "status": 500,
+      "msg": "environment variable WORKER_COUNT is undefined"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-07T12:36:25Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-07T12:36:40Z",
+      "level": "ERROR",
+      "route": "/upload",
+      "status": 500,
+      "msg": "environment variable WORKER_COUNT is undefined"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "adeabe8",
+      "ts": "2026-05-06T08:54:00Z",
+      "msg": "ci: cache dependencies",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "3479bed",
+      "ts": "2026-05-07T12:36:00Z",
+      "msg": "config: retune WORKER_COUNT",
+      "files": [
+        "settings/prod.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 3479bed (12:36:00Z) edited settings/prod.py (WORKER_COUNT) and broke /upload; errors begin ~20s later at 12:36:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "3479bed"
+    }
+  ]
+}

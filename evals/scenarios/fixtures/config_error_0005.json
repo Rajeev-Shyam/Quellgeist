@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0005",
+  "failure_class": "config_error",
+  "now": "2026-05-29T08:47:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-29T08:38:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-29T08:40:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-29T08:42:15Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-29T08:42:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-29T08:42:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-29T08:42:45Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-29T08:43:00Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "398c261",
+      "ts": "2026-05-28T08:22:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "8330bfe",
+      "ts": "2026-05-29T08:42:00Z",
+      "msg": "config: rotate STRIPE_KEY",
+      "files": [
+        "app/config.yaml"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 8330bfe (08:42:00Z) edited app/config.yaml (STRIPE_KEY) and broke /login; errors begin ~15s later at 08:42:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "8330bfe"
+    }
+  ]
+}

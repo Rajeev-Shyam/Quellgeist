@@ -1,0 +1,84 @@
+{
+  "id": "bad_deploy_0002",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-01T10:20:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-01T10:10:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-01T10:12:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-01T10:14:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-01T10:16:45Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-01T10:16:50Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-01T10:17:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "754f6d7",
+      "ts": "2026-04-30T09:05:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "43271c8",
+      "ts": "2026-05-01T10:16:00Z",
+      "msg": "deploy: rewrite session handler",
+      "files": [
+        "demo/app/session.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 43271c8 (10:16:00Z) touched demo/app/session.py and introduced an error in session.load; /orders 500s begin ~45s later at 10:16:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "43271c8"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "id": "bad_deploy_0019",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-18T11:37:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-18T11:25:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-18T11:27:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-18T11:29:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-18T11:31:20Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in billing.charge"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-18T11:31:25Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-18T11:31:40Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in billing.charge"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-18T11:32:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'user' in billing.charge"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "6011731",
+      "ts": "2026-05-17T02:20:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "1d2569c",
+      "ts": "2026-05-18T11:31:00Z",
+      "msg": "deploy: rewrite billing handler",
+      "files": [
+        "demo/app/billing.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 1d2569c (11:31:00Z) touched demo/app/billing.py and introduced an error in billing.charge; /checkout 500s begin ~20s later at 11:31:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "1d2569c"
+    }
+  ]
+}

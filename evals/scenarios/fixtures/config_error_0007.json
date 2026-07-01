@@ -1,0 +1,84 @@
+{
+  "id": "config_error_0007",
+  "failure_class": "config_error",
+  "now": "2026-05-31T10:33:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-31T10:24:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-31T10:26:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-31T10:28:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-31T10:30:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-31T10:30:35Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-31T10:31:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "d3df783",
+      "ts": "2026-05-30T06:35:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "2a8519d",
+      "ts": "2026-05-31T10:30:00Z",
+      "msg": "config: change DATABASE_URL default",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 2a8519d (10:30:00Z) edited .env (DATABASE_URL) and broke /orders; errors begin ~30s later at 10:30:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "2a8519d"
+    }
+  ]
+}

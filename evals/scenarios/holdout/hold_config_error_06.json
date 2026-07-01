@@ -1,0 +1,92 @@
+{
+  "id": "hold_config_error_06",
+  "failure_class": "config_error",
+  "now": "2026-05-12T09:03:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-12T08:51:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-12T08:53:00Z",
+      "level": "INFO",
+      "route": "/search",
+      "status": 200,
+      "msg": "/search ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-12T08:55:45Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "KeyError: 'PAGE_SIZE' missing from config"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-12T08:55:50Z",
+      "level": "INFO",
+      "route": "/billing",
+      "status": 200,
+      "msg": "/billing ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-12T08:56:30Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "KeyError: 'PAGE_SIZE' missing from config"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-12T08:57:15Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "KeyError: 'PAGE_SIZE' missing from config"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-12T08:58:00Z",
+      "level": "ERROR",
+      "route": "/search",
+      "status": 500,
+      "msg": "KeyError: 'PAGE_SIZE' missing from config"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "b89ab8f",
+      "ts": "2026-05-11T01:54:00Z",
+      "msg": "refactor: rename helpers",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "29f9477",
+      "ts": "2026-05-12T08:55:00Z",
+      "msg": "config: retune PAGE_SIZE",
+      "files": [
+        "settings/prod.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 29f9477 (08:55:00Z) edited settings/prod.py (PAGE_SIZE) and broke /search; errors begin ~45s later at 08:55:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "29f9477"
+    }
+  ]
+}

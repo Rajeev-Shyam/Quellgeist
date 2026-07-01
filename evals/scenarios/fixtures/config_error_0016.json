@@ -1,0 +1,92 @@
+{
+  "id": "config_error_0016",
+  "failure_class": "config_error",
+  "now": "2026-06-09T10:44:15Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-09T10:34:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-09T10:36:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-09T10:38:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-09T10:40:45Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-09T10:40:50Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-09T10:41:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-09T10:42:15Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "8c20211",
+      "ts": "2026-06-08T06:35:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "678920a",
+      "ts": "2026-06-09T10:40:00Z",
+      "msg": "config: change DATABASE_URL default",
+      "files": [
+        ".env"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 678920a (10:40:00Z) edited .env (DATABASE_URL) and broke /checkout; errors begin ~45s later at 10:40:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "678920a"
+    }
+  ]
+}

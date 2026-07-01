@@ -1,0 +1,100 @@
+{
+  "id": "config_error_0017",
+  "failure_class": "config_error",
+  "now": "2026-06-10T10:19:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-06-10T10:07:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-06-10T10:09:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-06-10T10:11:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-06-10T10:13:30Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "KeyError: 'MAX_CONNECTIONS' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-06-10T10:13:35Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-06-10T10:14:00Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "KeyError: 'MAX_CONNECTIONS' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-06-10T10:14:30Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "KeyError: 'MAX_CONNECTIONS' not set"
+    },
+    {
+      "id": 7,
+      "ts": "2026-06-10T10:15:00Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "KeyError: 'MAX_CONNECTIONS' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "cb9a9e8",
+      "ts": "2026-06-09T08:03:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "c1f0679",
+      "ts": "2026-06-10T10:13:00Z",
+      "msg": "config: rotate MAX_CONNECTIONS",
+      "files": [
+        "app/config.yaml"
+      ]
+    }
+  ],
+  "gold_cause": "Config change c1f0679 (10:13:00Z) edited app/config.yaml (MAX_CONNECTIONS) and broke /profile; errors begin ~30s later at 10:13:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "c1f0679"
+    }
+  ]
+}
