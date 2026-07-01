@@ -1,19 +1,39 @@
-"""Scenario schema + loader (Wave 1, Task 9 stub).
+"""Scenario schema + loader + parameterised generation.
 
 A Scenario bundles an injected failure's canned signals (logs, commits) with the
-gold root cause and the gold evidence handles a correct diagnosis must cite. In
-Wave 1 we load one hand-authored fixture; Wave 3 turns this into parameterised
-generation (templates -> ~50 variants across failure classes).
+gold root cause and the gold evidence handles a correct diagnosis must cite. Wave
+1 shipped one hand-authored fixture; Wave 3 turns generation into templates ->
+variants across failure classes.
+
+Two splits are generated from **disjoint parameter banks** (routes, modules,
+config keys, error signatures, commit-message templates): ``fixtures`` (the eval
+corpus) and ``holdout`` (reserved). Drawing the holdout from a DIFFERENT
+distribution than the fixtures is the whole point -- eval numbers then measure
+skill, not memorisation (DR-0003 / DR-0004 held-out constraint).
+
+Only the two log+commit classes (``bad_deploy``, ``config_error``) are generated
+here. ``resource_exhaustion`` needs metrics (a later Wave 3 increment) and would
+fail the fail-closed fabrication check until metric ids join the real-signal set
+(DR-0013 watch-out).
 """
 
 from __future__ import annotations
 
+import random
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from quellgeist.agent.schema import EvidenceRef
+
+_TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
+_HEX = "0123456789abcdef"
+# A fixed anchor -- generation must NOT read the wall clock, or the corpus would
+# change every run and never reconcile with the committed fixtures.
+_EPOCH = datetime(2026, 5, 1, 8, 0, 0)
 
 
 class Scenario(BaseModel):
@@ -33,5 +53,306 @@ def load_scenario(path: str | Path) -> Scenario:
     return Scenario.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
-def generate_scenarios() -> list[Scenario]:  # Wave 3
-    raise NotImplementedError("parameterised scenario generation lands in Wave 3")
+# --------------------------------------------------------------------------- #
+# Parameterised generation (Wave 3)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class _Bank:
+    """A split's generative vocabulary. Two banks (fixtures / holdout) share NO
+    tokens, so the two splits are drawn from disjoint distributions (DR-0003)."""
+
+    seed: int
+    id_style: str  # "fixtures" -> bad_deploy_0002 ; "holdout" -> hold_bad_deploy_01
+    counts: tuple[tuple[str, int], ...]  # (failure_class, n) in generation order
+    routes: tuple[str, ...]
+    modules: tuple[str, ...]  # dotted code paths, e.g. "auth.verify_token"
+    config_files: tuple[str, ...]
+    config_keys: tuple[str, ...]
+    deploy_msgs: tuple[str, ...]  # culprit commit msg templates -- {mod}
+    config_msgs: tuple[str, ...]  # culprit commit msg templates -- {key}
+    decoy_msgs: tuple[str, ...]  # innocent commit messages
+    code_errors: tuple[str, ...]  # bad_deploy error signatures -- {module}
+    config_errors: tuple[str, ...]  # config_error signatures -- {key}
+
+
+_FIXTURES_BANK = _Bank(
+    seed=20260701,
+    id_style="fixtures",
+    # bad_deploy starts at id 0002 -- 0001 is the hand-authored anchor fixture.
+    counts=(("bad_deploy", 24), ("config_error", 25)),
+    routes=("/login", "/data", "/checkout", "/profile", "/orders"),
+    modules=(
+        "auth.verify_token",
+        "billing.charge",
+        "cart.total",
+        "session.load",
+        "orders.place",
+    ),
+    config_files=("config/settings.py", "app/config.yaml", ".env"),
+    config_keys=(
+        "DATABASE_URL",
+        "REDIS_HOST",
+        "STRIPE_KEY",
+        "SESSION_TTL",
+        "MAX_CONNECTIONS",
+    ),
+    deploy_msgs=(
+        "deploy: refactor {mod} token parsing",
+        "deploy: optimise {mod} hot path",
+        "deploy: rewrite {mod} handler",
+    ),
+    config_msgs=(
+        "config: rotate {key}",
+        "chore: update {key} for prod",
+        "config: change {key} default",
+    ),
+    decoy_msgs=(
+        "docs: update README",
+        "test: add coverage for utils",
+        "chore: bump linter",
+        "style: reformat imports",
+    ),
+    code_errors=(
+        "TypeError: 'NoneType' object is not subscriptable in {module}",
+        "AttributeError: 'NoneType' object has no attribute 'get' in {module}",
+        "KeyError: 'user' in {module}",
+    ),
+    config_errors=(
+        "KeyError: '{key}' not set",
+        "missing required env var {key}",
+        "ValueError: invalid literal for int() for {key}",
+    ),
+)
+
+_HOLDOUT_BANK = _Bank(
+    seed=20260702,
+    id_style="holdout",
+    counts=(("bad_deploy", 6), ("config_error", 6)),
+    # Every token below is disjoint from _FIXTURES_BANK: a different distribution.
+    routes=("/search", "/upload", "/billing", "/notify", "/report"),
+    modules=(
+        "cache.fetch",
+        "queue.enqueue",
+        "report.render",
+        "search.index",
+        "upload.store",
+    ),
+    config_files=("settings/prod.py", "conf/app.toml", "env/production.env"),
+    config_keys=(
+        "CACHE_TTL",
+        "QUEUE_URL",
+        "SMTP_HOST",
+        "PAGE_SIZE",
+        "WORKER_COUNT",
+    ),
+    deploy_msgs=(
+        "deploy: migrate {mod} backend",
+        "deploy: inline {mod} cache",
+        "deploy: split {mod} module",
+    ),
+    config_msgs=(
+        "config: retune {key}",
+        "chore: adjust {key} for scale",
+        "config: swap {key} provider",
+    ),
+    decoy_msgs=(
+        "docs: fix changelog",
+        "test: quiet a flaky case",
+        "ci: cache dependencies",
+        "refactor: rename helpers",
+    ),
+    code_errors=(
+        "TypeError: 'NoneType' object is not iterable in {module}",
+        "IndexError: list index out of range in {module}",
+        "RecursionError: maximum recursion depth exceeded in {module}",
+    ),
+    config_errors=(
+        "KeyError: '{key}' missing from config",
+        "environment variable {key} is undefined",
+        "TypeError: int() argument must be a string for {key}",
+    ),
+)
+
+_BANKS: dict[str, _Bank] = {"fixtures": _FIXTURES_BANK, "holdout": _HOLDOUT_BANK}
+
+
+def distribution_tokens(split: str) -> set[str]:
+    """The generative vocabulary of a split -- the union of its bank's token
+    groups. Used to assert the fixtures and holdout splits are drawn from
+    DISJOINT distributions (DR-0003)."""
+    b = _bank(split)
+    tokens: set[str] = set()
+    for group in (
+        b.routes,
+        b.modules,
+        b.config_files,
+        b.config_keys,
+        b.deploy_msgs,
+        b.config_msgs,
+        b.decoy_msgs,
+        b.code_errors,
+        b.config_errors,
+    ):
+        tokens.update(group)
+    return tokens
+
+
+def _bank(split: str) -> _Bank:
+    try:
+        return _BANKS[split]
+    except KeyError:
+        raise ValueError(
+            f"unknown split {split!r}; expected one of {sorted(_BANKS)}"
+        ) from None
+
+
+def _fmt(dt: datetime) -> str:
+    return dt.strftime(_TS_FMT)
+
+
+def _sha(rng: random.Random, exclude: frozenset[str] = frozenset()) -> str:
+    """A deterministic 7-hex-char pseudo-sha unique within a scenario."""
+    while True:
+        s = "".join(rng.choice(_HEX) for _ in range(7))
+        if s not in exclude:
+            return s
+
+
+def _make_scenario(
+    *, sid: str, failure_class: str, bank: _Bank, rng: random.Random, index: int
+) -> Scenario:
+    """Build one internally-consistent scenario: an INFO baseline, an ERROR burst
+    on a route beginning shortly after a culprit deploy, plus a decoy commit and a
+    little cross-route noise. ``gold_evidence_refs`` cites the first ERROR row and
+    the culprit commit -- both real signals, so a gold diagnosis passes the judge
+    with zero fabrication (verified in tests)."""
+    base = _EPOCH + timedelta(days=index, minutes=rng.randrange(0, 300))
+    route = rng.choice(bank.routes)
+    noise_route = rng.choice([r for r in bank.routes if r != route])
+    culprit_sha = _sha(rng)
+    decoy_sha = _sha(rng, exclude=frozenset({culprit_sha}))
+    gap = rng.choice((15, 20, 30, 45))
+    n_errors = rng.choice((2, 3, 4))
+    n_baseline = rng.choice((2, 3))
+
+    t_deploy = base + timedelta(minutes=rng.randrange(1, 5))
+    t_decoy = base - timedelta(days=1, minutes=rng.randrange(0, 600))
+    t_first_err = t_deploy + timedelta(seconds=gap)
+
+    if failure_class == "bad_deploy":
+        module = rng.choice(bank.modules)
+        mod_file = f"demo/app/{module.split('.')[0]}.py"
+        culprit_msg = rng.choice(bank.deploy_msgs).format(mod=module.split(".")[0])
+        err_sig = rng.choice(bank.code_errors).format(module=module)
+        culprit_files = [mod_file]
+        gold_cause = (
+            f"Bad deploy {culprit_sha} ({_fmt(t_deploy)[11:]}) touched {mod_file} "
+            f"and introduced an error in {module}; {route} 500s begin ~{gap}s "
+            f"later at {_fmt(t_first_err)[11:]}."
+        )
+    elif failure_class == "config_error":
+        cfg = rng.choice(bank.config_files)
+        key = rng.choice(bank.config_keys)
+        culprit_msg = rng.choice(bank.config_msgs).format(key=key)
+        err_sig = rng.choice(bank.config_errors).format(key=key)
+        culprit_files = [cfg]
+        gold_cause = (
+            f"Config change {culprit_sha} ({_fmt(t_deploy)[11:]}) edited {cfg} "
+            f"({key}) and broke {route}; errors begin ~{gap}s later at "
+            f"{_fmt(t_first_err)[11:]}."
+        )
+    else:  # pragma: no cover - guarded by the caller's fixed class list
+        raise ValueError(f"unsupported failure_class {failure_class!r}")
+
+    rows: list[tuple[datetime, str, str, int, str]] = []
+    for k in range(n_baseline):
+        ts = t_deploy - timedelta(minutes=(n_baseline - k) * 2)
+        rows.append((ts, "INFO", route, 200, f"{route} ok"))
+    for k in range(n_errors):
+        rows.append(
+            (t_first_err + timedelta(seconds=k * gap), "ERROR", route, 500, err_sig)
+        )
+    rows.append(
+        (
+            t_first_err + timedelta(seconds=5),
+            "INFO",
+            noise_route,
+            200,
+            f"{noise_route} ok",
+        )
+    )
+    rows.sort(key=lambda r: r[0])
+
+    logs = [
+        {
+            "id": i,
+            "ts": _fmt(ts),
+            "level": level,
+            "route": rt,
+            "status": status,
+            "msg": msg,
+        }
+        for i, (ts, level, rt, status, msg) in enumerate(rows)
+    ]
+    first_error_id = next(row["id"] for row in logs if row["level"] == "ERROR")
+
+    commits = [
+        {
+            "sha": decoy_sha,
+            "ts": _fmt(t_decoy),
+            "msg": rng.choice(bank.decoy_msgs),
+            "files": ["README.md"],
+        },
+        {
+            "sha": culprit_sha,
+            "ts": _fmt(t_deploy),
+            "msg": culprit_msg,
+            "files": culprit_files,
+        },
+    ]
+
+    now = _fmt(rows[-1][0] + timedelta(minutes=rng.randrange(2, 9)))
+
+    return Scenario(
+        id=sid,
+        failure_class=failure_class,
+        now=now,
+        logs=logs,
+        commits=commits,
+        gold_cause=gold_cause,
+        gold_evidence_refs=[
+            {"type": "log", "id": first_error_id},
+            {"type": "commit", "sha": culprit_sha},
+        ],
+    )
+
+
+def _scenario_id(bank: _Bank, failure_class: str, offset: int) -> str:
+    if bank.id_style == "fixtures":
+        # bad_deploy is offset by the hand-authored anchor (id 0001).
+        base = 2 if failure_class == "bad_deploy" else 1
+        return f"{failure_class}_{base + offset:04d}"
+    return f"hold_{failure_class}_{offset + 1:02d}"
+
+
+def generate_scenarios(split: str = "fixtures") -> list[Scenario]:
+    """Deterministically generate the scenarios for a split ("fixtures" or
+    "holdout"). Same split -> identical output every run (seeded PRNG, fixed
+    epoch). The hand-authored ``bad_deploy_0001`` fixture is NOT produced here."""
+    bank = _bank(split)
+    rng = random.Random(bank.seed)
+    out: list[Scenario] = []
+    for failure_class, n in bank.counts:
+        for offset in range(n):
+            out.append(
+                _make_scenario(
+                    sid=_scenario_id(bank, failure_class, offset),
+                    failure_class=failure_class,
+                    bank=bank,
+                    rng=rng,
+                    index=len(out),
+                )
+            )
+    return out

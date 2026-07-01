@@ -134,6 +134,33 @@ _CORRECT_SCRIPT = [
 ]
 
 
+class GoldProvider:
+    """Emits, per scenario in main()'s sorted load order, the gold-correct
+    exchange (query ERROR logs -> list commits -> diagnose citing that scenario's
+    gold cause + evidence handles). Lets the offline entry-point smoke exercise
+    the FULL generated corpus, not just one hand-scripted fixture."""
+
+    def __init__(self, scenarios):
+        self.scripted = []
+        for s in scenarios:
+            evidence = [
+                (
+                    {"type": "commit", "sha": r.sha}
+                    if r.type == "commit"
+                    else {"type": "log", "id": r.id}
+                )
+                for r in s.gold_evidence_refs
+            ]
+            self.scripted += [
+                json.dumps({"action": "query_logs", "args": {"level": "ERROR"}}),
+                json.dumps({"action": "get_recent_commits", "args": {}}),
+                _diagnose(s.gold_cause, evidence),
+            ]
+
+    def complete(self, messages):
+        return self.scripted.pop(0)
+
+
 def test_clean_correct_scenario_has_no_fabrication():
     scenario = load_scenario(FIXTURE)
     result = run_scenario(scenario, FakeProvider(list(_CORRECT_SCRIPT)))
@@ -193,11 +220,11 @@ def test_run_all_returns_one_on_fabrication(capsys):
 
 
 def test_main_offline_returns_zero(monkeypatch):
-    # main() globs the fixtures and builds a real provider; swap in a scripted
-    # fake so the entry point is exercised end-to-end with no model/network.
-    monkeypatch.setattr(
-        run_evals, "LiteLLMProvider", lambda: FakeProvider(list(_CORRECT_SCRIPT))
-    )
+    # main() globs ALL fixtures and builds a real provider; swap in a gold-aware
+    # fake that answers each scenario correctly from its own gold, so the entry
+    # point is exercised end-to-end over the whole corpus with no model/network.
+    scenarios = run_evals._load_all_fixtures()
+    monkeypatch.setattr(run_evals, "LiteLLMProvider", lambda: GoldProvider(scenarios))
     assert main() == 0
 
 
