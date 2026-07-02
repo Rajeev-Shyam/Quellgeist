@@ -1,0 +1,67 @@
+{
+  "id": "probe_config_error_0005__no_culprit",
+  "failure_class": "config_error",
+  "now": "2026-05-13T08:22:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-13T08:13:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-13T08:15:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-13T08:17:30Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for MAX_CONNECTIONS"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-13T08:17:35Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-13T08:18:00Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for MAX_CONNECTIONS"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-13T08:18:30Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for MAX_CONNECTIONS"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "8485ec5",
+      "ts": "2026-05-12T02:57:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (no_culprit): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

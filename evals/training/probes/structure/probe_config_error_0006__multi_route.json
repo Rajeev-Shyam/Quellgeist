@@ -1,0 +1,92 @@
+{
+  "id": "probe_config_error_0006__multi_route",
+  "failure_class": "config_error",
+  "now": "2026-05-14T11:07:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-14T10:56:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-14T10:58:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-14T11:00:15Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for STRIPE_KEY"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-14T11:00:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-14T11:00:22Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for STRIPE_KEY"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-14T11:00:30Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for STRIPE_KEY"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-14T11:00:37Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for STRIPE_KEY"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "8e97f13",
+      "ts": "2026-05-13T08:21:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "e7b68c5",
+      "ts": "2026-05-14T11:00:00Z",
+      "msg": "config: change STRIPE_KEY default",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change e7b68c5 (11:00:00Z) edited config/settings.py (STRIPE_KEY) and broke /login; errors begin ~15s later at 11:00:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 2
+    },
+    {
+      "type": "commit",
+      "sha": "e7b68c5"
+    }
+  ]
+}

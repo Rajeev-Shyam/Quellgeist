@@ -23,9 +23,11 @@ _HOLDOUT = _HERE / "holdout"
 _ANCHOR = "bad_deploy_0001.json"  # hand-authored; never overwritten or removed
 
 
-def _to_json(s: Scenario) -> str:
+def scenario_json(s: Scenario) -> str:
     """Serialise a Scenario to the clean fixture shape (matches the anchor: no
-    display-only ``note``, no legacy ``gold_evidence`` field)."""
+    display-only ``note``, no legacy ``gold_evidence`` field). Public: the
+    DR-0020 probe sets are written in this same shape, so the serialization is
+    a cross-corpus contract with a single owner."""
     refs = [
         (
             {"type": r.type, "sha": r.sha}
@@ -48,23 +50,26 @@ def _to_json(s: Scenario) -> str:
     return json.dumps(doc, indent=2) + "\n"
 
 
-def _write_split(
-    scenarios: list[Scenario], dest: Path, *, keep: frozenset[str]
+def write_split(
+    scenarios: list[Scenario], dest: Path, *, keep: frozenset[str] = frozenset()
 ) -> None:
+    """Idempotently write one scenario dir: stale generated files are removed
+    (``keep`` protects hand-authored ones). Public for the same reason as
+    ``scenario_json`` — the DR-0020 probe dirs are written through it."""
     dest.mkdir(parents=True, exist_ok=True)
     written = {f"{s.id}.json" for s in scenarios} | keep
     for existing in dest.glob("*.json"):
         if existing.name not in written:
             existing.unlink()
     for s in scenarios:
-        (dest / f"{s.id}.json").write_text(_to_json(s), encoding="utf-8")
+        (dest / f"{s.id}.json").write_text(scenario_json(s), encoding="utf-8")
 
 
 def main() -> None:
     fixtures = generate_scenarios("fixtures")
     holdout = generate_scenarios("holdout")
-    _write_split(fixtures, _FIXTURES, keep=frozenset({_ANCHOR}))
-    _write_split(holdout, _HOLDOUT, keep=frozenset())
+    write_split(fixtures, _FIXTURES, keep=frozenset({_ANCHOR}))
+    write_split(holdout, _HOLDOUT)
     print(f"wrote {len(fixtures)} fixtures (+1 hand-authored anchor) to {_FIXTURES}")
     print(f"wrote {len(holdout)} holdout scenarios to {_HOLDOUT}")
 

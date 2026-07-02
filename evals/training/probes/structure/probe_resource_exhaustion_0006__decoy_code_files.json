@@ -1,0 +1,140 @@
+{
+  "id": "probe_resource_exhaustion_0006__decoy_code_files",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-22T08:18:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-22T08:06:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-22T08:08:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-22T08:10:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-22T08:12:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-22T08:12:35Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-22T08:13:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-22T08:13:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-22T08:14:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "160867c",
+      "ts": "2026-05-20T23:50:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "demo/app/utils.py"
+      ]
+    },
+    {
+      "sha": "a1fc3fc",
+      "ts": "2026-05-22T08:12:00Z",
+      "msg": "deploy: preload the full dataset into memory",
+      "files": [
+        "demo/app/thread.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "thread_pool_active",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-22T08:06:00Z",
+          "value": 13
+        },
+        {
+          "ts": "2026-05-22T08:08:00Z",
+          "value": 13
+        },
+        {
+          "ts": "2026-05-22T08:10:00Z",
+          "value": 13
+        },
+        {
+          "ts": "2026-05-22T08:12:20Z",
+          "value": 72
+        },
+        {
+          "ts": "2026-05-22T08:12:40Z",
+          "value": 134
+        },
+        {
+          "ts": "2026-05-22T08:13:00Z",
+          "value": 195
+        },
+        {
+          "ts": "2026-05-22T08:13:20Z",
+          "value": 256
+        },
+        {
+          "ts": "2026-05-22T08:12:30Z",
+          "value": 256
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy a1fc3fc (08:12:00Z) -- deploy: preload the full dataset into memory -- drove thread_pool_active to its ceiling; /checkout errors begin ~30s later at 08:12:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "thread_pool_active"
+    },
+    {
+      "type": "commit",
+      "sha": "a1fc3fc"
+    }
+  ]
+}

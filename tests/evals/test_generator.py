@@ -21,7 +21,11 @@ from evals.scenarios.generator import (
 )
 from quellgeist.agent.schema import Diagnosis, Hypothesis
 
-_SPLITS = ("fixtures", "holdout")
+# train/probe (DR-0020) flow through the same generator, so the per-split
+# invariants (determinism, canonical timestamps, gold consistency,
+# well-formedness) must hold for them too — the training corpus and probe
+# sets are byte-derived from these scenarios.
+_SPLITS = ("fixtures", "holdout", "train", "probe")
 _CANONICAL_TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 

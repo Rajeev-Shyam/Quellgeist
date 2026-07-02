@@ -1,0 +1,83 @@
+{
+  "id": "probe_config_error_0007__decoy_wall",
+  "failure_class": "config_error",
+  "now": "2026-05-15T11:46:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-15T11:36:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-15T11:38:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-15T11:40:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-15T11:42:20Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-15T11:42:25Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-15T11:42:40Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-15T11:43:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "2c77060",
+      "ts": "2026-05-14T07:22:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "fd4cd61",
+      "ts": "2026-05-15T11:42:00Z",
+      "msg": "docs: update README for /orders",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (decoy_wall): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

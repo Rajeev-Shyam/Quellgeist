@@ -1,0 +1,75 @@
+{
+  "id": "probe_bad_deploy_0002__time_shift",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-02T10:43:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-02T10:22:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-02T10:24:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-02T10:26:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-02T10:28:15Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-02T10:28:20Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-02T10:28:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in auth.verify_token"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "fd94933",
+      "ts": "2026-05-01T08:10:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "bf97414",
+      "ts": "2026-05-02T10:38:30Z",
+      "msg": "deploy: rewrite auth handler",
+      "files": [
+        "demo/app/auth.py"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (time_shift): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

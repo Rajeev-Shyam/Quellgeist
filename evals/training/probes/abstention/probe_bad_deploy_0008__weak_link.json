@@ -1,0 +1,67 @@
+{
+  "id": "probe_bad_deploy_0008__weak_link",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-08T09:16:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-08T09:08:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-08T09:10:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-08T09:12:20Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in session.load"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-08T09:12:25Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-08T09:12:40Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "TypeError: 'NoneType' object is not subscriptable in session.load"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "046ba3b",
+      "ts": "2026-05-07T06:18:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "45eac6f",
+      "ts": "2026-05-08T09:12:00Z",
+      "msg": "deploy: rewrite orders handler",
+      "files": [
+        "demo/app/orders.py"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (weak_link): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

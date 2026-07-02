@@ -24,6 +24,10 @@ htmlcov/
 # Logs / local demo artifacts
 *.log
 
+# DR-0020 training corpus (deterministic local build artifact —
+# `python -m evals.training.build`; the reviewed sample + probes ARE committed)
+evals/training/data/
+
 # Runtime demo signal log
 demo/incident_logs.jsonl
 

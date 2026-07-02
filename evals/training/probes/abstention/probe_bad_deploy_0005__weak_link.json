@@ -1,0 +1,67 @@
+{
+  "id": "probe_bad_deploy_0005__weak_link",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-05T09:37:40Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-05T09:30:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-05T09:32:00Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-05T09:34:20Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in orders.place"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-05T09:34:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-05T09:34:40Z",
+      "level": "ERROR",
+      "route": "/login",
+      "status": 500,
+      "msg": "AttributeError: 'NoneType' object has no attribute 'get' in orders.place"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "312ec5f",
+      "ts": "2026-05-03T23:34:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "7870676",
+      "ts": "2026-05-05T09:34:00Z",
+      "msg": "deploy: refactor cart token parsing",
+      "files": [
+        "demo/app/cart.py"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (weak_link): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

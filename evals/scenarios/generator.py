@@ -6,12 +6,15 @@ evidence handles a correct diagnosis must cite. Wave 1 shipped one hand-authored
 fixture; Wave 3 turns generation into templates -> variants across failure
 classes.
 
-Two splits are generated from **disjoint parameter banks** (routes, modules,
-config keys, metric names, error signatures, commit-message templates):
-``fixtures`` (the eval corpus) and ``holdout`` (reserved). Drawing the holdout
-from a DIFFERENT distribution than the fixtures is the whole point -- eval
-numbers then measure skill, not memorisation (DR-0003 / DR-0004 held-out
-constraint).
+Two EVAL splits are generated from **disjoint parameter banks** (routes,
+modules, config keys, metric names, error signatures, commit-message
+templates): ``fixtures`` (the eval corpus) and ``holdout`` (reserved). Drawing
+the holdout from a DIFFERENT distribution than the fixtures is the whole point
+-- eval numbers then measure skill, not memorisation (DR-0003 / DR-0004
+held-out constraint). Two TRAINING-side splits (``train`` and ``probe``,
+DR-0020) deliberately reuse the fixtures bank verbatim under fresh seeds and
+their own id namespaces: training stays on the fixtures distribution while the
+committed eval items themselves are never trained on.
 
 Three failure classes are generated: ``bad_deploy`` and ``config_error`` (logs +
 commits) and ``resource_exhaustion`` (adds a metric series that climbs to a
@@ -23,7 +26,7 @@ required gold handle, which forces the agent to actually read metrics.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -69,7 +72,10 @@ class _Bank:
     tokens, so the two splits are drawn from disjoint distributions (DR-0003)."""
 
     seed: int
-    id_style: str  # "fixtures" -> bad_deploy_0002 ; "holdout" -> hold_bad_deploy_01
+    # "fixtures" -> bad_deploy_0002 ; "holdout" -> hold_bad_deploy_01 ; any other
+    # value doubles as the id-namespace prefix (DR-0020: "train"/"probe" ->
+    # train_bad_deploy_0001 / probe_bad_deploy_0001).
+    id_style: str
     counts: tuple[tuple[str, int], ...]  # (failure_class, n) in generation order
     routes: tuple[str, ...]
     modules: tuple[str, ...]  # dotted code paths, e.g. "auth.verify_token"
@@ -217,31 +223,65 @@ _HOLDOUT_BANK = _Bank(
     ),
 )
 
-_BANKS: dict[str, _Bank] = {"fixtures": _FIXTURES_BANK, "holdout": _HOLDOUT_BANK}
+# DR-0020: the fine-tune train split and the probe pool reuse the fixtures
+# VOCABULARY verbatim (training stays on the fixtures distribution; the holdout
+# bank is never sampled) but draw FRESH scenarios under their own seeds and id
+# namespaces -- never the committed eval items. config_error is weighted up in
+# the train split: it has 3x the semantic-core entropy of the other classes.
+_TRAIN_BANK = replace(
+    _FIXTURES_BANK,
+    seed=20260703,
+    id_style="train",
+    counts=(("bad_deploy", 96), ("config_error", 128), ("resource_exhaustion", 72)),
+)
+
+# Source pool for the two DR-0020 probe sets (abstention recall; structure
+# perturbation). The pool itself is never an artifact -- evals/training ablates
+# or perturbs these scenarios and commits only the derived probe files.
+_PROBE_BANK = replace(
+    _FIXTURES_BANK,
+    seed=20260704,
+    id_style="probe",
+    counts=(("bad_deploy", 8), ("config_error", 8), ("resource_exhaustion", 6)),
+)
+
+_BANKS: dict[str, _Bank] = {
+    "fixtures": _FIXTURES_BANK,
+    "holdout": _HOLDOUT_BANK,
+    "train": _TRAIN_BANK,
+    "probe": _PROBE_BANK,
+}
+
+
+def bank_vocabulary(split: str) -> dict[str, tuple[str, ...]]:
+    """A split's generative vocabulary, by named group. The DR-0020
+    contamination scan needs the GROUPS (not the flat union) because several
+    bank entries are unrendered templates (``{key}``/``{mod}``/``{module}``)
+    that must be format-expanded before they can be matched against rendered
+    training text."""
+    b = _bank(split)
+    return {
+        "routes": b.routes,
+        "modules": b.modules,
+        "config_files": b.config_files,
+        "config_keys": b.config_keys,
+        "deploy_msgs": b.deploy_msgs,
+        "config_msgs": b.config_msgs,
+        "decoy_msgs": b.decoy_msgs,
+        "code_errors": b.code_errors,
+        "config_errors": b.config_errors,
+        "resource_metrics": b.resource_metrics,
+        "resource_msgs": b.resource_msgs,
+        "resource_errors": b.resource_errors,
+    }
 
 
 def distribution_tokens(split: str) -> set[str]:
     """The generative vocabulary of a split -- the union of its bank's token
-    groups. Used to assert the fixtures and holdout splits are drawn from
-    DISJOINT distributions (DR-0003)."""
-    b = _bank(split)
-    tokens: set[str] = set()
-    for group in (
-        b.routes,
-        b.modules,
-        b.config_files,
-        b.config_keys,
-        b.deploy_msgs,
-        b.config_msgs,
-        b.decoy_msgs,
-        b.code_errors,
-        b.config_errors,
-        b.resource_metrics,
-        b.resource_msgs,
-        b.resource_errors,
-    ):
-        tokens.update(group)
-    return tokens
+    groups (derived from ``bank_vocabulary`` so the two views can never
+    enumerate different group lists). Used to assert the fixtures and holdout
+    splits are drawn from DISJOINT distributions (DR-0003)."""
+    return set().union(*bank_vocabulary(split).values())
 
 
 def _bank(split: str) -> _Bank:
@@ -424,13 +464,20 @@ def _scenario_id(bank: _Bank, failure_class: str, offset: int) -> str:
         # bad_deploy is offset by the hand-authored anchor (id 0001).
         base = 2 if failure_class == "bad_deploy" else 1
         return f"{failure_class}_{base + offset:04d}"
-    return f"hold_{failure_class}_{offset + 1:02d}"
+    if bank.id_style == "holdout":
+        return f"hold_{failure_class}_{offset + 1:02d}"
+    # train/probe (DR-0020): the id_style doubles as the namespace prefix, so
+    # training-side ids can never collide with an eval item on disk.
+    return f"{bank.id_style}_{failure_class}_{offset + 1:04d}"
 
 
 def generate_scenarios(split: str = "fixtures") -> list[Scenario]:
-    """Deterministically generate the scenarios for a split ("fixtures" or
-    "holdout"). Same split -> identical output every run (seeded PRNG, fixed
-    epoch). The hand-authored ``bad_deploy_0001`` fixture is NOT produced here."""
+    """Deterministically generate the scenarios for a split — the eval corpora
+    ("fixtures"/"holdout") or the DR-0020 training-side splits ("train"/"probe").
+    Same split -> identical output every run (seeded PRNG, fixed epoch); the
+    training corpus and probe sets are byte-derived from this, so changes here
+    change what gets trained on. The hand-authored ``bad_deploy_0001`` fixture
+    is NOT produced here."""
     bank = _bank(split)
     rng = random.Random(bank.seed)
     out: list[Scenario] = []
