@@ -206,25 +206,26 @@ Ran the *Wave Review Checklist* (below) at the boundary:
 
 **Objective:** the cost thesis with a measured (honest) result — *fine-tuned local Qwen3-4B + verifier ≈ frontier-only quality at a fraction of the cost* (a hypothesis to test, not a promise).
 **Entry criteria:** stable base-model behaviour + evals from Wave 3 — met.
-**Critical (from review):** the **eval/holdout scenarios must come from a different distribution than the fine-tuning data** (DR-0003), or the numbers measure memorisation, not skill. The holdout exists (16 scenarios, disjoint token banks) and is selected only explicitly (`QG_SCENARIOS_DIR`).
+**Critical (from review):** the **holdout must come from a different distribution than the fine-tuning data** (DR-0003, as refined by DR-0020: the fixtures share the training bank by design, so the post-tune fixtures number is a same-bank diagnostic, not a generalisation eval), or the headline number measures memorisation, not skill. The holdout exists (16 scenarios, disjoint token banks) and is selected only explicitly (`QG_SCENARIOS_DIR`).
 
 ### Task 1: Baseline the intended reasoner  ✅ DONE (DR-0019)
 - [x] Pin the local serving artifact: Ollama `qwen3:4b-instruct-2507-q4_K_M`, `QG_MODEL=ollama_chat/…` — env-only swap, no code change.
 - [x] Measure base Qwen3-4B under the Gemma run's conditions: **fixtures 0/65 · 0 fabricated; holdout 0/16 · 0 fabricated** (`wave4-qwen-baseline.md`).
 - [x] Harness: `QG_SCENARIOS_DIR` selects the holdout explicitly; CLI tool-surface gap fixed (`query_metrics`).
 
-### Task 2: Training data from the generator *(next; DR required first)*
-- [ ] **DR-0020 (to open): trajectory format.** Decide what a training example is — full ReAct trajectories (broad query → observe → cite-and-diagnose) vs (context → gold diagnosis) pairs — and how abstention examples are represented so the safety invariant survives tuning. Target the measured failure mode: speculative filtering.
-- [ ] Generate from the **fixtures distribution only** (`generator.py`); hold out nothing less than the whole `holdout/` dir.
-- [ ] Acceptance: a reviewed sample of N trajectories; zero holdout contamination (id + token-bank check).
+### Task 2: Training data from the generator *(in progress — DR drafted, builder not started)*
+- [x] **DR-0020 (opened, Proposed — awaiting user review): trajectory format.** Decided: full ReAct trajectories in the exact runtime message shapes (messages-array JSONL, per-turn loss masking), programmatic teacher-free synthesis from a fresh-seeded fixtures-bank train split, abstention *founded* (15–25%, abstain-after-investigation, hard variants ≥50% of abstain mass, contrastive near-pairs) + trap examples, fail-closed build gates incl. a citation-prefix check stricter than the fabrication check, and pre-registered claims wording (the deterministic gate has a measured script ceiling: a positional policy passes 81/81). See the DR for the full decision, incl. the two never-trained probe sets (abstention recall; structure perturbation).
+- [ ] Build the trajectory generator per DR-0020 from the **fixtures distribution only** (fresh seed, `train_` namespace — not the 65 committed fixtures); hold out nothing less than the whole `holdout/` dir; training artifacts live outside `evals/scenarios/`; build the two never-trained probe sets alongside (abstention recall; structure perturbation).
+- [ ] Acceptance: a reviewed sample of N≈20 trajectories; zero holdout contamination + fixtures-readout integrity (id + expanded-token-bank boundary scan + sha sets, run against the committed corpora incl. the hand-authored anchor; metric-name disjointness vs the holdout); deterministic rebuild; build gates green on 100% of examples.
 
 ### Task 3: QLoRA fine-tune (user-run: local PoC → cloud)
 - [ ] Local PoC on the RTX 5060 (8GB, 4-bit QLoRA via Unsloth) to validate the pipeline; free Colab/Kaggle T4 as the fallback (the DR-0008 spike's precedent).
 - [ ] Real training run (Modal default / Vast.ai cheaper / Colab). Export a 4-bit artifact servable by Ollama.
 
 ### Task 4: The comparison matrix (the headline)
-- [ ] Fine-tuned vs base vs the Gemma-4-31B stand-in (and optionally a frontier model / Claude-as-verifier via the home Max plan), with/without verifier, on **cost AND quality**, primary axis = **the holdout**; repeated passes per cell (local decoding is not run-to-run deterministic — DR-0019).
+- [ ] Fine-tuned vs base vs the Gemma-4-31B stand-in (and optionally a frontier model / Claude-as-verifier via the home Max plan), with/without verifier, on **cost AND quality**, primary axis = **the holdout**; **≥3 passes per cell** (local decoding is not run-to-run deterministic — DR-0019).
 - [ ] Instrument real per-scenario token/call counts during these runs (observation sizes, loop turns, verifier calls) — measured cost, not estimates.
+- [ ] Measurement integrity (DR-0020): **pin `QG_VERIFIER_MODEL` explicitly in every cell** (the `QG_MODEL` fallback would let the tuned model verify itself); trace-level audits alongside pass rates (no unobserved filter values in any tool-call argument; no fixtures-bank tokens or train-seen timestamps as holdout filter args); report fixtures split into core-overlapping vs core-fresh; run the abstention-recall and structure-perturbation probes; use DR-0020's pre-registered claims wording (holdout = out-of-vocabulary, in-structure).
 
 ### Task 5: Publish
 - [ ] Case study + README cost story update — **including the case where local proves insufficient (still a valid finding)**.
