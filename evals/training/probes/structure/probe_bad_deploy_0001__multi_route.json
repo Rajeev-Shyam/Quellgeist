@@ -1,0 +1,132 @@
+{
+  "id": "probe_bad_deploy_0001__multi_route",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-01T13:06:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-01T12:52:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-01T12:54:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-01T12:56:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-01T12:58:15Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-01T12:58:20Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 8,
+      "ts": "2026-05-01T12:58:22Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-01T12:58:30Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 9,
+      "ts": "2026-05-01T12:58:37Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-01T12:58:45Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 10,
+      "ts": "2026-05-01T12:58:52Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-01T12:59:00Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    },
+    {
+      "id": 11,
+      "ts": "2026-05-01T12:59:07Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'user' in session.load"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "5ee1a57",
+      "ts": "2026-04-30T10:16:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "4281cba",
+      "ts": "2026-05-01T12:58:00Z",
+      "msg": "deploy: refactor session token parsing",
+      "files": [
+        "demo/app/session.py"
+      ]
+    }
+  ],
+  "gold_cause": "Bad deploy 4281cba (12:58:00Z) touched demo/app/session.py and introduced an error in session.load; /data 500s begin ~15s later at 12:58:15Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "4281cba"
+    }
+  ]
+}

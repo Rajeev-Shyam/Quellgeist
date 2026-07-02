@@ -1,0 +1,132 @@
+{
+  "id": "probe_resource_exhaustion_0004__decoy_code_files",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-20T09:42:15Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-20T09:28:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-20T09:30:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-20T09:32:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-20T09:34:45Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-20T09:34:50Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-20T09:35:30Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-20T09:36:15Z",
+      "level": "ERROR",
+      "route": "/data",
+      "status": 500,
+      "msg": "OperationalError: too many connections open"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "b736c5a",
+      "ts": "2026-05-19T09:10:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "demo/app/utils.py"
+      ]
+    },
+    {
+      "sha": "da74f57",
+      "ts": "2026-05-20T09:34:00Z",
+      "msg": "deploy: preload the full dataset into memory",
+      "files": [
+        "demo/app/worker.py"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "worker_queue_depth",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-20T09:28:00Z",
+          "value": 6
+        },
+        {
+          "ts": "2026-05-20T09:30:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-05-20T09:32:00Z",
+          "value": 6
+        },
+        {
+          "ts": "2026-05-20T09:34:20Z",
+          "value": 68
+        },
+        {
+          "ts": "2026-05-20T09:34:40Z",
+          "value": 131
+        },
+        {
+          "ts": "2026-05-20T09:35:00Z",
+          "value": 194
+        },
+        {
+          "ts": "2026-05-20T09:35:20Z",
+          "value": 256
+        },
+        {
+          "ts": "2026-05-20T09:34:45Z",
+          "value": 256
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy da74f57 (09:34:00Z) -- deploy: preload the full dataset into memory -- drove worker_queue_depth to its ceiling; /data errors begin ~45s later at 09:34:45Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "worker_queue_depth"
+    },
+    {
+      "type": "commit",
+      "sha": "da74f57"
+    }
+  ]
+}

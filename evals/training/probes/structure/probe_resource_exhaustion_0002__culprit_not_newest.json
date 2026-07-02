@@ -1,0 +1,148 @@
+{
+  "id": "probe_resource_exhaustion_0002__culprit_not_newest",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-18T10:42:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-18T10:26:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-18T10:28:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-18T10:30:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-18T10:32:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-18T10:32:35Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-18T10:33:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-18T10:33:30Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-18T10:34:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "f32df45",
+      "ts": "2026-05-17T03:26:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "42c1bda",
+      "ts": "2026-05-18T10:32:00Z",
+      "msg": "config: cut the connection pool in half",
+      "files": [
+        "demo/app/memory.py"
+      ]
+    },
+    {
+      "sha": "18e4a8a",
+      "ts": "2026-05-18T10:33:30Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "memory_rss_bytes",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-18T10:26:00Z",
+          "value": 10
+        },
+        {
+          "ts": "2026-05-18T10:28:00Z",
+          "value": 9
+        },
+        {
+          "ts": "2026-05-18T10:30:00Z",
+          "value": 9
+        },
+        {
+          "ts": "2026-05-18T10:32:20Z",
+          "value": 22
+        },
+        {
+          "ts": "2026-05-18T10:32:40Z",
+          "value": 36
+        },
+        {
+          "ts": "2026-05-18T10:33:00Z",
+          "value": 50
+        },
+        {
+          "ts": "2026-05-18T10:33:20Z",
+          "value": 64
+        },
+        {
+          "ts": "2026-05-18T10:32:30Z",
+          "value": 64
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy 42c1bda (10:32:00Z) -- config: cut the connection pool in half -- drove memory_rss_bytes to its ceiling; /checkout errors begin ~30s later at 10:32:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "memory_rss_bytes"
+    },
+    {
+      "type": "commit",
+      "sha": "42c1bda"
+    }
+  ]
+}

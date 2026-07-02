@@ -1,0 +1,75 @@
+{
+  "id": "probe_config_error_0001__no_culprit",
+  "failure_class": "config_error",
+  "now": "2026-05-09T08:17:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-09T08:07:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-09T08:09:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-09T08:11:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-09T08:13:20Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-09T08:13:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-09T08:13:40Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-09T08:14:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "missing required env var DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "e80dfc0",
+      "ts": "2026-05-08T02:31:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (no_culprit): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

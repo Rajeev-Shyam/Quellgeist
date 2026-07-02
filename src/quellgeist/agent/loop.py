@@ -42,6 +42,11 @@ class LoopResult:
     tool_calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     schema_violations: list[str] = field(default_factory=list)
     seen_handles: set[tuple[str, Any]] = field(default_factory=set)
+    # The full message transcript exactly as the loop built it (system, trigger,
+    # assistant turns, observations, retries — including the final assistant
+    # reply). First-class so the DR-0020 trajectory builder's byte-fidelity
+    # guarantee rests on a documented contract, not on aliasing loop internals.
+    messages: list[dict[str, str]] = field(default_factory=list)
 
     def cited_handles(self) -> set[tuple[str, Any]]:
         cited: set[tuple[str, Any]] = set()
@@ -98,6 +103,7 @@ def run_loop(
         {"role": "user", "content": user_trigger(now)},
     ]
     result = LoopResult(diagnosis=_abstain("loop did not run"), steps=0)
+    result.messages = messages  # the loop appends in place; the reference is live
 
     for step in range(1, max_steps + 1):
         result.steps = step

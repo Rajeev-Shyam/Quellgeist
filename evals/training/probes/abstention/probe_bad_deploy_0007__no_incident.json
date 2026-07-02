@@ -1,0 +1,59 @@
+{
+  "id": "probe_bad_deploy_0007__no_incident",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-07T10:09:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-07T09:57:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-07T09:59:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-07T10:01:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-07T10:03:35Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "976af0b",
+      "ts": "2026-05-06T05:41:00Z",
+      "msg": "style: reformat imports",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "7897ca2",
+      "ts": "2026-05-07T10:03:00Z",
+      "msg": "deploy: refactor auth token parsing",
+      "files": [
+        "demo/app/auth.py"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (no_incident): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

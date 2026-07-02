@@ -1,0 +1,140 @@
+{
+  "id": "probe_resource_exhaustion_0001__culprit_not_newest",
+  "failure_class": "resource_exhaustion",
+  "now": "2026-05-17T10:38:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-17T10:28:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-17T10:30:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-17T10:32:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-17T10:34:20Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-17T10:34:25Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-17T10:34:40Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-17T10:35:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "TimeoutError: could not acquire a connection"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "e02cff0",
+      "ts": "2026-05-16T03:50:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "077da7f",
+      "ts": "2026-05-17T10:34:00Z",
+      "msg": "deploy: preload the full dataset into memory",
+      "files": [
+        "demo/app/db.py"
+      ]
+    },
+    {
+      "sha": "351f0be",
+      "ts": "2026-05-17T10:35:20Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "metric": "db_connections_in_use",
+      "unit": "count",
+      "points": [
+        {
+          "ts": "2026-05-17T10:28:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-05-17T10:30:00Z",
+          "value": 8
+        },
+        {
+          "ts": "2026-05-17T10:32:00Z",
+          "value": 7
+        },
+        {
+          "ts": "2026-05-17T10:34:20Z",
+          "value": 68
+        },
+        {
+          "ts": "2026-05-17T10:34:40Z",
+          "value": 131
+        },
+        {
+          "ts": "2026-05-17T10:35:00Z",
+          "value": 194
+        },
+        {
+          "ts": "2026-05-17T10:35:20Z",
+          "value": 256
+        },
+        {
+          "ts": "2026-05-17T10:34:20Z",
+          "value": 256
+        }
+      ]
+    }
+  ],
+  "gold_cause": "Resource exhaustion: deploy 077da7f (10:34:00Z) -- deploy: preload the full dataset into memory -- drove db_connections_in_use to its ceiling; /checkout errors begin ~20s later at 10:34:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "metric",
+      "id": "db_connections_in_use"
+    },
+    {
+      "type": "commit",
+      "sha": "077da7f"
+    }
+  ]
+}

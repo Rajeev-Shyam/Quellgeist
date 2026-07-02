@@ -1,0 +1,91 @@
+{
+  "id": "probe_config_error_0003__time_shift",
+  "failure_class": "config_error",
+  "now": "2026-05-11T09:32:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-11T09:09:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-11T09:11:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-11T09:13:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-11T09:15:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-11T09:15:35Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-11T09:16:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-11T09:16:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-11T09:17:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "KeyError: 'REDIS_HOST' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "8cc775d",
+      "ts": "2026-05-10T08:43:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "91e7f7f",
+      "ts": "2026-05-11T09:27:00Z",
+      "msg": "chore: update REDIS_HOST for prod",
+      "files": [
+        "config/settings.py"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (time_shift): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

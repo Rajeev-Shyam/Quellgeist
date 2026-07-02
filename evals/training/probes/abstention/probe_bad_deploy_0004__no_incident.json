@@ -1,0 +1,59 @@
+{
+  "id": "probe_bad_deploy_0004__no_incident",
+  "failure_class": "bad_deploy",
+  "now": "2026-05-04T08:46:15Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-04T08:30:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-04T08:32:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-04T08:34:00Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-04T08:36:50Z",
+      "level": "INFO",
+      "route": "/login",
+      "status": 200,
+      "msg": "/login ok"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "f131bcb",
+      "ts": "2026-05-03T08:17:00Z",
+      "msg": "chore: bump linter",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "79dfa58",
+      "ts": "2026-05-04T08:36:00Z",
+      "msg": "deploy: refactor billing token parsing",
+      "files": [
+        "demo/app/billing.py"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (no_incident): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

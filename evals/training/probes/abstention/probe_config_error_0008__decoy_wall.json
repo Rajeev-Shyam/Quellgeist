@@ -1,0 +1,91 @@
+{
+  "id": "probe_config_error_0008__decoy_wall",
+  "failure_class": "config_error",
+  "now": "2026-05-16T10:12:20Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-16T09:57:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-16T09:59:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-16T10:01:00Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-16T10:03:20Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-16T10:03:25Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-16T10:03:40Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-16T10:04:00Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    },
+    {
+      "id": 7,
+      "ts": "2026-05-16T10:04:20Z",
+      "level": "ERROR",
+      "route": "/checkout",
+      "status": 500,
+      "msg": "KeyError: 'STRIPE_KEY' not set"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "0920733",
+      "ts": "2026-05-15T04:12:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "ec33808",
+      "ts": "2026-05-16T10:03:00Z",
+      "msg": "docs: update README for /checkout",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "gold_cause": "unanswerable (decoy_wall): a correct diagnosis abstains",
+  "gold_evidence_refs": []
+}

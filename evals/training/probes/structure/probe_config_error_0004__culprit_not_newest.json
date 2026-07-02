@@ -1,0 +1,100 @@
+{
+  "id": "probe_config_error_0004__culprit_not_newest",
+  "failure_class": "config_error",
+  "now": "2026-05-12T13:06:30Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-12T12:54:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-12T12:56:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-12T12:58:00Z",
+      "level": "INFO",
+      "route": "/orders",
+      "status": 200,
+      "msg": "/orders ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-12T13:00:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for REDIS_HOST"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-12T13:00:35Z",
+      "level": "INFO",
+      "route": "/checkout",
+      "status": 200,
+      "msg": "/checkout ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-12T13:01:00Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for REDIS_HOST"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-12T13:01:30Z",
+      "level": "ERROR",
+      "route": "/orders",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for REDIS_HOST"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "740491f",
+      "ts": "2026-05-11T08:58:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "354ef96",
+      "ts": "2026-05-12T13:00:00Z",
+      "msg": "config: change REDIS_HOST default",
+      "files": [
+        "app/config.yaml"
+      ]
+    },
+    {
+      "sha": "cf0a1fb",
+      "ts": "2026-05-12T13:01:30Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    }
+  ],
+  "gold_cause": "Config change 354ef96 (13:00:00Z) edited app/config.yaml (REDIS_HOST) and broke /orders; errors begin ~30s later at 13:00:30Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "354ef96"
+    }
+  ]
+}

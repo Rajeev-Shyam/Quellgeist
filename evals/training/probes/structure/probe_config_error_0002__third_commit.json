@@ -1,0 +1,100 @@
+{
+  "id": "probe_config_error_0002__third_commit",
+  "failure_class": "config_error",
+  "now": "2026-05-10T09:47:00Z",
+  "logs": [
+    {
+      "id": 0,
+      "ts": "2026-05-10T09:36:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 1,
+      "ts": "2026-05-10T09:38:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 2,
+      "ts": "2026-05-10T09:40:00Z",
+      "level": "INFO",
+      "route": "/profile",
+      "status": 200,
+      "msg": "/profile ok"
+    },
+    {
+      "id": 3,
+      "ts": "2026-05-10T09:42:20Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    },
+    {
+      "id": 4,
+      "ts": "2026-05-10T09:42:25Z",
+      "level": "INFO",
+      "route": "/data",
+      "status": 200,
+      "msg": "/data ok"
+    },
+    {
+      "id": 5,
+      "ts": "2026-05-10T09:42:40Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    },
+    {
+      "id": 6,
+      "ts": "2026-05-10T09:43:00Z",
+      "level": "ERROR",
+      "route": "/profile",
+      "status": 500,
+      "msg": "ValueError: invalid literal for int() for DATABASE_URL"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "e0e282b",
+      "ts": "2026-05-09T05:20:00Z",
+      "msg": "docs: update README",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "sha": "e5b8f5c",
+      "ts": "2026-05-10T09:42:00Z",
+      "msg": "config: change DATABASE_URL default",
+      "files": [
+        "app/config.yaml"
+      ]
+    },
+    {
+      "sha": "098de3c",
+      "ts": "2026-05-10T09:12:00Z",
+      "msg": "test: add coverage for utils",
+      "files": [
+        "tests/test_utils.py"
+      ]
+    }
+  ],
+  "gold_cause": "Config change e5b8f5c (09:42:00Z) edited app/config.yaml (DATABASE_URL) and broke /profile; errors begin ~20s later at 09:42:20Z.",
+  "gold_evidence_refs": [
+    {
+      "type": "log",
+      "id": 3
+    },
+    {
+      "type": "commit",
+      "sha": "e5b8f5c"
+    }
+  ]
+}
