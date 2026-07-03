@@ -28,6 +28,11 @@ htmlcov/
 # `python -m evals.training.build`; the reviewed sample + probes ARE committed)
 evals/training/data/
 
+# Fine-tune run outputs + env (finetune/chat_template.jinja and
+# finetune/render_report.json ARE committed once prepare.py produces them)
+/runs/
+.venv-finetune/
+
 # Runtime demo signal log
 demo/incident_logs.jsonl
 

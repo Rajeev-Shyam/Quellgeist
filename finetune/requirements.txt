@@ -1,0 +1,16 @@
+# DR-0020 fine-tune environment (SEPARATE venv on the GPU machine / Colab —
+# these never enter the project's own dependencies).
+#
+# Colab: `pip install unsloth` usually suffices (it pins its own torch/
+# transformers/bitsandbytes). Local RTX 5060 (Blackwell): install a torch
+# build matching your CUDA first, then unsloth; if bitsandbytes 4-bit kernels
+# misbehave on the new consumer arch, fall back to the free T4 — that PoC path
+# is first-class, not a downgrade (DR-0004 / DR-0008 spike precedent).
+#
+# Re-verify versions at kickoff (DR-0020 §9): the Unsloth template-mirror and
+# export behaviours referenced in train.py were checked against upstream on
+# 2026-07-02.
+unsloth
+transformers
+datasets
+# prepare.py alone (CPU preflight) needs only: transformers
