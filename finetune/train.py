@@ -75,7 +75,7 @@ def main() -> int:
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
 
-    from unsloth import FastLanguageModel  # lazy: GPU-only environment
+    from unsloth import FastLanguageModel, is_bfloat16_supported  # lazy: GPU-only
 
     if args.export_only:
         # Re-export must load the TRAINED adapters — loading BASE_MODEL here
@@ -93,8 +93,11 @@ def main() -> int:
     )
     # DR-0020 §9: the vendored OFFICIAL template, never a mirror's (Unsloth's
     # Instruct-2507 mirror injects <think> handling the runtime never produces)
+    from finetune.rendering import THINKING_POISONS
+
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    assert "<think>" not in template and "reasoning_content" not in template
+    for poison in THINKING_POISONS:
+        assert poison not in template, f"vendored template contains {poison!r}"
     tokenizer.chat_template = template
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = "<|endoftext|>"
@@ -140,6 +143,11 @@ def main() -> int:
                 lr_scheduler_type="cosine",
                 warmup_steps=10,
                 logging_steps=5,
+                # canonical Unsloth precision: bf16 on Blackwell/Ampere+, else
+                # fp16 with the Trainer's GradScaler on the T4 fallback so LoRA
+                # grads don't underflow (review finding)
+                bf16=is_bfloat16_supported(),
+                fp16=not is_bfloat16_supported(),
                 optim="adamw_8bit",
                 seed=SEED,
                 save_strategy="no",

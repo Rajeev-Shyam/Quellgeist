@@ -1,0 +1,13 @@
+{
+  "model_id": "Qwen/Qwen3-4B-Instruct-2507",
+  "examples": 316,
+  "token_length": {
+    "min": 1082,
+    "median": 1608,
+    "max": 2222,
+    "max_seq_len": 4096
+  },
+  "template_sha256": "64f85b198065d0fba2a81f37e10ed68161ce2c19a754c7100e67e0ca2ee9c326",
+  "template_bytes": 2630,
+  "eos_token_id": 151645
+}

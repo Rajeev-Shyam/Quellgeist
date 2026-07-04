@@ -26,6 +26,12 @@ from typing import Any
 ASSISTANT_HEADER = "<|im_start|>assistant\n"
 IM_END = "<|im_end|>"
 
+# Thinking-scaffolding markers that must never appear in the vendored template
+# (Unsloth's Instruct-2507 mirror injects them; the runtime never produces think
+# output, so training on them is skew — DR-0020 §9). Shared by prepare.py and
+# train.py so the two guards cannot drift.
+THINKING_POISONS = ("<think>", "reasoning_content", "enable_thinking")
+
 
 def strip_train_flags(messages: list[dict[str, Any]]) -> list[dict[str, str]]:
     """The template must never see the masking metadata."""
@@ -33,8 +39,12 @@ def strip_train_flags(messages: list[dict[str, Any]]) -> list[dict[str, str]]:
 
 
 def _prefix_ids(tokenizer, messages: list[dict[str, str]]) -> list[int]:
+    # return_dict=False pins the bare list[int] return the span arithmetic
+    # below requires: transformers 5.x defaults apply_chat_template(tokenize=
+    # True) to a BatchEncoding, 4.x returned the flat id list. The token ids
+    # are identical either way — only the wrapper changed.
     return tokenizer.apply_chat_template(
-        messages, tokenize=True, add_generation_prompt=False
+        messages, tokenize=True, add_generation_prompt=False, return_dict=False
     )
 
 

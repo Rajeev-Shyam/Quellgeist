@@ -3,7 +3,10 @@ repos:
     rev: v6.0.0            # `pre-commit autoupdate` bumps these to latest
     hooks:
       - id: trailing-whitespace
+        exclude: ^finetune/chat_template\.jinja$
       - id: end-of-file-fixer
+        # byte-exact vendored artifact; its sha256 is pinned in render_report.json
+        exclude: ^finetune/chat_template\.jinja$
       - id: check-toml
       - id: check-yaml
       - id: check-merge-conflict
