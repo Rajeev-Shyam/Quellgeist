@@ -43,9 +43,11 @@ EOS_ID = 151645  # <|im_end|> — re-checked in the exported GGUF's metadata
 
 
 def vendor_template(tokenizer) -> str:
+    from finetune.rendering import THINKING_POISONS
+
     template = tokenizer.chat_template
     assert template, "tokenizer has no chat template"
-    for poison in ("<think>", "reasoning_content", "enable_thinking"):
+    for poison in THINKING_POISONS:
         assert poison not in template, (
             f"chat template contains {poison!r} — this is a thinking-variant "
             "template (likely a mirror's); the runtime never produces think "
@@ -80,10 +82,15 @@ def main() -> int:
     template = vendor_template(tokenizer)
     tokenizer.chat_template = template  # train with exactly the vendored bytes
 
-    # tokenizer sanity (DR-0020 §9): no BOS auto-prepend; pad != eos so no
+    # tokenizer sanity (DR-0020 §9): no special-token auto-wrap (a BOS/framing
+    # token would double against the vendored template); pad != eos so no
     # collator can mask the stop token out of the labels
-    probe = tokenizer("x", add_special_tokens=True).input_ids
-    assert tokenizer.bos_token_id not in probe, "tokenizer prepends BOS"
+    with_special = tokenizer("x", add_special_tokens=True).input_ids
+    without_special = tokenizer("x", add_special_tokens=False).input_ids
+    assert with_special == without_special, (
+        f"tokenizer auto-adds special tokens ({with_special} vs "
+        f"{without_special}) — would skew the vendored-template rendering"
+    )
     assert tokenizer.eos_token_id == EOS_ID, tokenizer.eos_token_id
     assert tokenizer.pad_token_id is not None, "no pad token set"
     assert tokenizer.pad_token_id != tokenizer.eos_token_id, "pad == eos"

@@ -1,0 +1,4 @@
+# The vendored chat template is a byte-exact artifact: its sha256 + byte count
+# are recorded in finetune/render_report.json. Never CRLF-normalize it, or the
+# committed bytes stop matching the recorded hash.
+finetune/chat_template.jinja -text

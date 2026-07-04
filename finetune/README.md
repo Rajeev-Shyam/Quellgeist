@@ -10,9 +10,18 @@ Modelfile (never Ollama's template autodetect).
 ## 0. One-time setup (any machine with internet)
 
 ```bash
-# from the repo root
+# from the repo root — build the corpus with the project interpreter
 python -m evals.training.build          # writes evals/training/data/train.jsonl (316 examples)
-python -m venv .venv-finetune && source .venv-finetune/bin/activate
+python -m venv .venv-finetune
+```
+
+Activate the venv before `pip install` and every later `python finetune/...` step
+(the GPU legs all run inside it):
+
+- **Linux / macOS / Colab:** `source .venv-finetune/bin/activate`
+- **Windows PowerShell:** `.\.venv-finetune\Scripts\Activate.ps1` — Windows creates `Scripts\`, never `bin/`
+
+```bash
 pip install -r finetune/requirements.txt
 ```
 
@@ -92,6 +101,10 @@ Acceptance (DR-0019/DR-0020): holdout > 0/16 · fabrication 0 everywhere ·
 abstention-probe recall ≥ 90% over the repeated passes. Claims use the DR's
 pre-registered wording: the holdout is out-of-vocabulary, in-structure.
 
-Windows notes from the baseline session: set `PYTHONUTF8=1` for any
-redirected run; disable the 5-minute AC sleep timer for long runs
+Windows notes from the baseline session: run the venv interpreter via
+`.venv-finetune\Scripts\python.exe` (or activate with `Activate.ps1`). The bash
+blocks above use bash idioms — in PowerShell, translate `export FOO=bar` to
+`$env:FOO='bar'`, and inline `FOO=1 BAR=2 cmd` prefixes to separate `$env:`
+assignments before the command. Set `PYTHONUTF8=1` for any redirected run;
+disable the 5-minute AC sleep timer for long runs
 (`powercfg /change standby-timeout-ac 0`).
