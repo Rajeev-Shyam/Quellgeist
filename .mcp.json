@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "quellgeist-logs": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "quellgeist.servers.logs_mcp"]
+    },
+    "quellgeist-commits": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "quellgeist.servers.commits_mcp"]
+    },
+    "quellgeist-metrics": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "quellgeist.servers.metrics_mcp"]
+    }
+  }
+}
