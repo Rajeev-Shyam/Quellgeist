@@ -65,7 +65,18 @@ def unobserved_argument_values(messages: list[dict[str, str]]) -> list[Violation
     """Tool-call argument values not contained in any EARLIER observation of
     the same trace. ``None`` means "no filter" and is never a violation; the
     taught policy's broad first call is argument-free, so on a policy-following
-    trace this list is empty and every entry is a speculative filter."""
+    trace this list is empty and every entry is a speculative filter.
+
+    Containment is substring (``str(value) in obs``), matching the training
+    builder's evidence-derived-narrowing gate verbatim so the two agree. Known
+    blind spot inherited from that gate: a short or numeric value (e.g.
+    ``limit=5``) trivially appears inside some observation (an id, a timestamp
+    digit), so it reads as "observed" even when speculative. This does not
+    weaken the measurement of the DR-0019 failure mode, whose invented values
+    are long strings -- ``route`` (e.g. ``api/v1/orders``) and over-narrow
+    ``since`` timestamps -- which never spuriously match; it only means the
+    audit does not adjudicate numeric filters, which the taught policy does not
+    emit anyway."""
     out: list[Violation] = []
     for action, args, seen in _tool_actions(messages):
         for name, value in args.items():

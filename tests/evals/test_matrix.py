@@ -122,15 +122,54 @@ def test_run_cell_writes_passes_and_summary(tmp_path, capsys):
     assert cell["scenario_count"] == 1 and cell["passes"] == 2
 
 
+def test_run_cell_clears_a_prior_longer_run(tmp_path):
+    """A re-run with fewer passes must not leave a prior run's pass_N.jsonl or
+    stale cell.json behind -- a measurement dir reflects exactly this run."""
+    scenarios = _one_scenario_dir(tmp_path)
+    out = tmp_path / "out"
+    rc = run_cell.main(
+        [
+            "--cell-id",
+            "c",
+            "--scenarios",
+            str(scenarios),
+            "--passes",
+            "3",
+            "--out",
+            str(out),
+        ],
+        provider=FakeProvider(_CORRECT_SCRIPT * 3),
+    )
+    assert rc == 0
+    assert {p.name for p in out.glob("pass_*.jsonl")} == {
+        "pass_1.jsonl",
+        "pass_2.jsonl",
+        "pass_3.jsonl",
+    }
+    rc = run_cell.main(
+        [
+            "--cell-id",
+            "c",
+            "--scenarios",
+            str(scenarios),
+            "--passes",
+            "1",
+            "--out",
+            str(out),
+        ],
+        provider=FakeProvider(list(_CORRECT_SCRIPT)),
+    )
+    assert rc == 0
+    assert {p.name for p in out.glob("pass_*.jsonl")} == {"pass_1.jsonl"}
+
+
 def test_run_cell_speculative_filter_is_flagged(tmp_path):
     scenarios = _one_scenario_dir(tmp_path)
     out = tmp_path / "out"
     script = [
         # First call filters on values NO observation grounded — the DR-0019
         # baseline failure mode the audit exists to measure.
-        json.dumps(
-            {"action": "query_logs", "args": {"route": "api/v1/orders"}}
-        ),
+        json.dumps({"action": "query_logs", "args": {"route": "api/v1/orders"}}),
         json.dumps({"action": "get_recent_commits", "args": {}}),
         _diagnose(
             "bad deploy a1b2c3d broke auth.verify_token",
@@ -138,8 +177,16 @@ def test_run_cell_speculative_filter_is_flagged(tmp_path):
         ),
     ]
     rc = run_cell.main(
-        ["--cell-id", "spec", "--scenarios", str(scenarios), "--passes", "1",
-         "--out", str(out)],
+        [
+            "--cell-id",
+            "spec",
+            "--scenarios",
+            str(scenarios),
+            "--passes",
+            "1",
+            "--out",
+            str(out),
+        ],
         provider=FakeProvider(script),
     )
     assert rc == 0
@@ -154,8 +201,15 @@ def test_run_cell_speculative_filter_is_flagged(tmp_path):
 def test_verify_requires_pinned_verifier_model(tmp_path, capsys):
     scenarios = _one_scenario_dir(tmp_path)
     rc = run_cell.main(
-        ["--cell-id", "x", "--scenarios", str(scenarios), "--verify",
-         "--out", str(tmp_path / "out")],
+        [
+            "--cell-id",
+            "x",
+            "--scenarios",
+            str(scenarios),
+            "--verify",
+            "--out",
+            str(tmp_path / "out"),
+        ],
         provider=FakeProvider([]),
     )
     assert rc == 2
@@ -167,8 +221,15 @@ def test_verify_rejects_self_verification(tmp_path, capsys, monkeypatch):
     monkeypatch.setenv("QG_VERIFIER_MODEL", "ollama_chat/tuned")
     scenarios = _one_scenario_dir(tmp_path)
     rc = run_cell.main(
-        ["--cell-id", "x", "--scenarios", str(scenarios), "--verify",
-         "--out", str(tmp_path / "out")],
+        [
+            "--cell-id",
+            "x",
+            "--scenarios",
+            str(scenarios),
+            "--verify",
+            "--out",
+            str(tmp_path / "out"),
+        ],
         provider=FakeProvider([]),
     )
     assert rc == 2
@@ -201,8 +262,18 @@ def test_abstain_scoring_passes_deliberate_and_fails_fallback(tmp_path):
     )
     out1 = tmp_path / "deliberate"
     rc = run_cell.main(
-        ["--cell-id", "a", "--scenarios", str(scenarios), "--passes", "1",
-         "--score", "abstain", "--out", str(out1)],
+        [
+            "--cell-id",
+            "a",
+            "--scenarios",
+            str(scenarios),
+            "--passes",
+            "1",
+            "--score",
+            "abstain",
+            "--out",
+            str(out1),
+        ],
         provider=FakeProvider([deliberate]),
     )
     assert rc == 0
@@ -215,8 +286,18 @@ def test_abstain_scoring_passes_deliberate_and_fails_fallback(tmp_path):
     # NOT deliberately — must not count as recall (DR-0020 decision 6).
     out2 = tmp_path / "forced"
     rc = run_cell.main(
-        ["--cell-id", "b", "--scenarios", str(scenarios), "--passes", "1",
-         "--score", "abstain", "--out", str(out2)],
+        [
+            "--cell-id",
+            "b",
+            "--scenarios",
+            str(scenarios),
+            "--passes",
+            "1",
+            "--score",
+            "abstain",
+            "--out",
+            str(out2),
+        ],
         provider=FakeProvider(["not json"] * 8),
     )
     assert rc == 0
@@ -226,9 +307,7 @@ def test_abstain_scoring_passes_deliberate_and_fails_fallback(tmp_path):
 
 
 def test_holdout_cell_enables_bank_and_timestamp_audits(tmp_path):
-    holdout_file = sorted(
-        (REPO / "evals" / "scenarios" / "holdout").glob("*.json")
-    )[0]
+    holdout_file = sorted((REPO / "evals" / "scenarios" / "holdout").glob("*.json"))[0]
     scenarios = _one_scenario_dir(tmp_path, holdout_file)
     out = tmp_path / "out"
     train_ts = sorted(audits.train_timestamps())[0]
@@ -253,8 +332,16 @@ def test_holdout_cell_enables_bank_and_timestamp_audits(tmp_path):
         ),
     ]
     rc = run_cell.main(
-        ["--cell-id", "hold", "--scenarios", str(scenarios), "--passes", "1",
-         "--out", str(out)],
+        [
+            "--cell-id",
+            "hold",
+            "--scenarios",
+            str(scenarios),
+            "--passes",
+            "1",
+            "--out",
+            str(out),
+        ],
         provider=FakeProvider(script),
     )
     assert rc == 0

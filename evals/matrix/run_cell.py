@@ -50,7 +50,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -89,7 +89,7 @@ def _git_head() -> str | None:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _usage_delta(provider: Provider | None, start: int) -> tuple[dict | None, int]:
@@ -138,13 +138,9 @@ def _scenario_record(
 ) -> dict[str, Any]:
     messages = r.loop.messages
     deliberate = _deliberate_abstention(r)
-    passed = (
-        (deliberate and r.fabrication.ok) if score_mode == "abstain" else r.passed
-    )
+    passed = (deliberate and r.fabrication.ok) if score_mode == "abstain" else r.passed
     final = r.verifier.diagnosis if r.verifier is not None else r.loop.diagnosis
-    audit: dict[str, Any] = {
-        "unobserved_args": unobserved_argument_values(messages)
-    }
+    audit: dict[str, Any] = {"unobserved_args": unobserved_argument_values(messages)}
     if holdout_audits:
         audit["bank_token_args"] = fixtures_bank_argument_leaks(messages)
         audit["train_ts_args"] = train_timestamp_argument_leaks(messages)
@@ -188,9 +184,7 @@ def _pass_summary(records: list[dict[str, Any]], pass_idx: int) -> dict[str, Any
         totals = [r[role] for r in records]
         if any(t is None for t in totals):
             return None
-        vals = [
-            (t["prompt_tokens"], t["completion_tokens"]) for t in totals
-        ]
+        vals = [(t["prompt_tokens"], t["completion_tokens"]) for t in totals]
         if any(p is None or c is None for p, c in vals):
             return None
         return sum(p + c for p, c in vals)
@@ -304,15 +298,23 @@ def main(
 
     holdout_audits = all(s.id.startswith("hold_") for s in scenarios)
     core_flags: dict[str, bool] = (
-        {}
-        if holdout_audits
-        else {s.id: core_overlaps_train(s) for s in scenarios}
+        {} if holdout_audits else {s.id: core_overlaps_train(s) for s in scenarios}
     )
 
-    out_dir = Path(args.out) if args.out else (
-        Path("runs") / "matrix" / re.sub(r"[^\w.+-]+", "_", args.cell_id)
+    out_dir = (
+        Path(args.out)
+        if args.out
+        else (Path("runs") / "matrix" / re.sub(r"[^\w.+-]+", "_", args.cell_id))
     )
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Clear a prior run's artifacts so a shorter re-run (fewer passes) cannot
+    # leave orphaned pass_N.jsonl / a stale cell.json behind — a measurement
+    # dir must reflect exactly this run. cell.json goes first: its absence is
+    # the "incomplete" signal report.py keys on, so it must not survive into a
+    # run that then skips before rewriting it.
+    (out_dir / "cell.json").unlink(missing_ok=True)
+    for stale in out_dir.glob("pass_*.jsonl"):
+        stale.unlink()
 
     started = _now_iso()
     per_pass: list[dict[str, Any]] = []
