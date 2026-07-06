@@ -511,17 +511,26 @@ def test_fallback_prefixes_match_the_loop():
 # --------------------------------------------------------------------------- #
 
 
-def _cell(cell_id, passed_per_pass, n, score_mode="gate", recall=None):
+def _cell(
+    cell_id,
+    passed_per_pass,
+    n,
+    score_mode="gate",
+    recall=None,
+    max_steps=8,
+    verifier_model="ollama_chat/base",
+):
     passes = len(passed_per_pass)
     return {
         "cell_id": cell_id,
         "score_mode": score_mode,
         "model": "ollama_chat/m",
         "verify": True,
-        "verifier_model": "ollama_chat/base",
+        "verifier_model": verifier_model,
         "scenarios_dir": "evals/scenarios/holdout",
         "scenario_count": n,
         "passes": passes,
+        "max_steps": max_steps,
         "per_pass": [
             {
                 "pass": i + 1,
@@ -565,8 +574,35 @@ def test_report_renders_cells_and_claims_footer(tmp_path, capsys):
     assert rc == 0
     assert "| tuned--holdout |" in out and "| base--holdout |" in out
     assert "4,5,4 /16" in out
-    assert "out-of-vocabulary, in-structure" in out  # the pre-registered wording
+    # standard conditions -> the neutral marker, and the verbatim claims clause
+    assert "3×8" in out
+    assert "instead of regurgitating training vocabulary" in out
+    assert "out-of-vocabulary, in-structure" in out
     assert (tmp_path / "r.md").read_text()
+
+
+def test_report_flags_ablation_conditions(tmp_path, capsys):
+    """A cell that deviates from the standard 3-pass / max_steps-8 conditions
+    (or self-verifies) must be flagged, not merged silently -- the report's
+    one real oversell vector (raised max_steps reads as same-conditions)."""
+    std = tmp_path / "std.json"
+    few = tmp_path / "few.json"
+    steps = tmp_path / "steps.json"
+    selfv = tmp_path / "self.json"
+    std.write_text(json.dumps(_cell("std", [4, 5, 4], 16)))
+    few.write_text(json.dumps(_cell("fewpass", [4], 16)))  # 1 pass < 3
+    steps.write_text(json.dumps(_cell("bigsteps", [4, 4, 4], 16, max_steps=30)))
+    selfv.write_text(
+        json.dumps(_cell("selfv", [4, 4, 4], 16, verifier_model="ollama_chat/m"))
+    )
+    rc = report.main([str(std), str(few), str(steps), str(selfv)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    lines = {ln.split("|")[1].strip(): ln for ln in out.splitlines() if "|" in ln}
+    assert lines["std"].rstrip().endswith("· |")  # neutral: standard conditions
+    assert "⚠1pass" in lines["fewpass"]
+    assert "⚠max_steps=30" in lines["bigsteps"]
+    assert "⚠self-verify" in lines["selfv"]
 
 
 def test_report_refuses_a_missing_cell(tmp_path, capsys):

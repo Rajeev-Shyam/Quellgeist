@@ -65,7 +65,12 @@ def unobserved_argument_values(messages: list[dict[str, str]]) -> list[Violation
     """Tool-call argument values not contained in any EARLIER observation of
     the same trace. ``None`` means "no filter" and is never a violation; the
     taught policy's broad first call is argument-free, so on a policy-following
-    trace this list is empty and every entry is a speculative filter.
+    trace this list is empty. On the tuned model an entry is a speculative
+    filter (the DR-0019 failure mode); on a non-tuned baseline an entry is
+    "unobserved", which is a superset -- e.g. an arithmetically-derived
+    ``since`` window is unobserved but not invented vocabulary -- so read this
+    column together with the bank-token audit, which isolates the invented
+    subset.
 
     Containment is substring (``str(value) in obs``), matching the training
     builder's evidence-derived-narrowing gate verbatim so the two agree. Known
