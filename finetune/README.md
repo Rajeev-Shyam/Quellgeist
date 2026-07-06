@@ -79,23 +79,42 @@ Post-export checklist (each catches a silent-failure mode verified upstream):
   `QG_MODEL=ollama_chat/quellgeist-qwen3-dr0020 uv run quellgeist diagnose` —
   the model should open with a broad `query_logs` (no invented `route`).
 
-## 5. Measure (Task 4 preview — full matrix tooling lands with Task 4)
+## 5. Measure (Task 4 — the matrix tooling is in `evals/matrix/`)
 
 Every cell per DR-0020 §8: **pin the verifier explicitly** (never the
 `QG_MODEL` fallback — the tuned model must not verify itself), **≥3 passes**
 per cell (temp-0 local decoding is not run-to-run deterministic, DR-0019), and
-run the probes alongside the corpora:
+run the probes alongside the corpora. Use the matrix cell runner — it
+*enforces* the verifier pin (unpinned or self-identical = config error),
+instruments real per-scenario token/call counts, and runs the DR-0020 §8
+trace audits alongside the scores:
 
 ```bash
 export QG_MODEL="ollama_chat/quellgeist-qwen3-dr0020"
 export QG_VERIFIER_MODEL="ollama_chat/qwen3:4b-instruct-2507-q4_K_M"   # pinned: the BASE artifact
-QG_VERIFY=1 PYTHONUTF8=1 uv run python -u -m evals.run_evals                     # fixtures (secondary axis)
-QG_VERIFY=1 PYTHONUTF8=1 QG_SCENARIOS_DIR=evals/scenarios/holdout \
-  uv run python -u -m evals.run_evals                                            # holdout (PRIMARY axis)
-QG_VERIFY=1 PYTHONUTF8=1 uv run python -u -m evals.training.run_abstention_probe # abstain recall ≥ 90%
-QG_VERIFY=1 PYTHONUTF8=1 QG_SCENARIOS_DIR=evals/training/probes/structure \
-  uv run python -u -m evals.run_evals                                            # script-vs-policy (reported, not gated)
+export PYTHONUTF8=1
+
+# holdout (PRIMARY axis) and fixtures (secondary; auto-reported split into
+# core-overlapping vs core-fresh), 3 passes each, verifier on:
+uv run python -u -m evals.matrix.run_cell --cell-id tuned+verifier--holdout \
+  --scenarios evals/scenarios/holdout --verify
+uv run python -u -m evals.matrix.run_cell --cell-id tuned+verifier--fixtures \
+  --verify
+
+# probes (never trained on): abstain recall ≥ 90%; structure = reported, not gated
+uv run python -u -m evals.matrix.run_cell --cell-id tuned+verifier--abstain-probe \
+  --scenarios evals/training/probes/abstention --score abstain --verify
+uv run python -u -m evals.matrix.run_cell --cell-id tuned+verifier--structure-probe \
+  --scenarios evals/training/probes/structure --verify
+
+# repeat the four cells with the BASE artifact in QG_MODEL (and any other
+# model column), then merge everything into the comparison table:
+uv run python -m evals.matrix.report runs/matrix/*/cell.json --out matrix-report.md
 ```
+
+(The plain `evals.run_evals` / `run_abstention_probe` commands still work for
+one-off smokes; the matrix runner is the same harness with the DR-0020 §8
+riders enforced and the cost/audit columns recorded.)
 
 Acceptance (DR-0019/DR-0020): holdout > 0/16 · fabrication 0 everywhere ·
 abstention-probe recall ≥ 90% over the repeated passes. Claims use the DR's
