@@ -27,9 +27,24 @@ genuinely transient failures.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 DEFAULT_MODEL = os.environ.get("QG_MODEL", "gemini/gemini-3.5-flash")
+
+
+@dataclass(frozen=True)
+class CallUsage:
+    """Measured cost of one completed provider call (Wave 4, Task 4): token
+    counts from the backend's own usage report (``None`` when the backend does
+    not report them) and the latency of the successful request. The comparison
+    matrix reads these as per-scenario deltas -- measured cost, not estimates
+    (plan Task 4). Failed attempts that were retried are not recorded; their
+    time shows up in the caller's wall-clock measurement instead."""
+
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    latency_s: float
 
 
 @runtime_checkable
@@ -72,6 +87,9 @@ class LiteLLMProvider:
             else float(os.environ.get("QG_MIN_CALL_INTERVAL_S", "0"))
         )
         self._last_call = 0.0
+        # One CallUsage per completed call, in call order. Bounded by the run's
+        # own call count (an eval run makes a few hundred calls at most).
+        self.calls: list[CallUsage] = []
 
     def complete(self, messages: list[dict[str, str]]) -> str:
         import random
@@ -100,11 +118,20 @@ class LiteLLMProvider:
         delay = self.backoff_base
         for attempt in range(self.max_retries):
             try:
+                t0 = time.monotonic()
                 resp = litellm.completion(
                     model=self.model,
                     messages=messages,
                     temperature=self.temperature,
                     timeout=self.timeout,
+                )
+                usage = getattr(resp, "usage", None)
+                self.calls.append(
+                    CallUsage(
+                        prompt_tokens=getattr(usage, "prompt_tokens", None),
+                        completion_tokens=getattr(usage, "completion_tokens", None),
+                        latency_s=time.monotonic() - t0,
+                    )
                 )
                 return resp.choices[0].message.content or ""
             except retryable:

@@ -27,6 +27,15 @@ from quellgeist.agent.prompts import build_system_prompt, user_trigger
 from quellgeist.agent.providers import Provider
 from quellgeist.agent.schema import Diagnosis
 
+# The abstention reasons the LOOP synthesizes (initial placeholder;
+# step-budget exhaustion), as opposed to a model-emitted abstained diagnose.
+# Downstream scorers must tell the two apart -- the abstention probe and the
+# comparison matrix count only DELIBERATE abstention as abstaining (DR-0020
+# decision 6) -- so the prefixes are a public contract, not string coincidence.
+_FALLBACK_INITIAL = "loop did not run"
+_FALLBACK_EXHAUSTED_PREFIX = "no valid diagnosis within"
+FALLBACK_ABSTENTION_PREFIXES = (_FALLBACK_EXHAUSTED_PREFIX, _FALLBACK_INITIAL)
+
 
 @dataclass
 class ToolSpec:
@@ -102,7 +111,7 @@ def run_loop(
         {"role": "system", "content": build_system_prompt(tool_lines)},
         {"role": "user", "content": user_trigger(now)},
     ]
-    result = LoopResult(diagnosis=_abstain("loop did not run"), steps=0)
+    result = LoopResult(diagnosis=_abstain(_FALLBACK_INITIAL), steps=0)
     result.messages = messages  # the loop appends in place; the reference is live
 
     for step in range(1, max_steps + 1):
@@ -158,7 +167,7 @@ def run_loop(
 
     # exhausted without a valid diagnosis -> graceful abstention, never crash
     result.diagnosis = _abstain(
-        f"no valid diagnosis within {max_steps} steps "
+        f"{_FALLBACK_EXHAUSTED_PREFIX} {max_steps} steps "
         f"({len(result.schema_violations)} schema violation(s))"
     )
     return result
