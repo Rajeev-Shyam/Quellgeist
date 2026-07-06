@@ -29,6 +29,7 @@ from pathlib import Path
 
 from evals.run_evals import run_scenario
 from evals.scenarios.generator import load_scenario
+from quellgeist.agent.loop import FALLBACK_ABSTENTION_PREFIXES
 from quellgeist.agent.providers import (
     LiteLLMProvider,
     Provider,
@@ -38,7 +39,6 @@ from quellgeist.agent.providers import (
 from quellgeist.agent.verifier import default_verifier_provider
 
 PROBE_DIR = Path(__file__).parent / "probes" / "abstention"
-_LOOP_FALLBACK_PREFIXES = ("no valid diagnosis within", "loop did not run")
 
 
 def main(
@@ -69,7 +69,7 @@ def main(
             loop_diag = r.loop.diagnosis
             reason = loop_diag.abstention_reason or ""
             model_abstained = loop_diag.abstained and not reason.startswith(
-                _LOOP_FALLBACK_PREFIXES
+                FALLBACK_ABSTENTION_PREFIXES
             )
             final = r.verifier.diagnosis if r.verifier is not None else loop_diag
             deliberate += model_abstained
