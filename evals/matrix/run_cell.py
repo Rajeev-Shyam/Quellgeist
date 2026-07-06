@@ -269,7 +269,11 @@ def main(
     verifier_model = os.environ.get("QG_VERIFIER_MODEL") or None
     if args.verify and verifier_provider is None:
         # DR-0020 decision 8: pinned, and never the reasoner verifying itself.
-        # The probe runner warns; a matrix cell fails closed.
+        # The probe runner warns; a matrix cell fails closed. Note this catches
+        # only an EXACT model-string match -- two litellm aliases for the same
+        # artifact (ollama_chat/X vs ollama/X) would slip past, so pin the
+        # verifier to a genuinely different family (the DR's guidance: the BASE
+        # artifact) rather than a re-spelling of the reasoner.
         if not verifier_model:
             print(
                 "CONFIG ERROR: --verify requires QG_VERIFIER_MODEL to be set "

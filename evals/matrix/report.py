@@ -26,6 +26,26 @@ def _fmt_tokens(total: int | None, n_scenario_runs: int) -> str:
     return f"{round(total / n_scenario_runs):,}"
 
 
+# The standard comparison conditions (DR-0020 §8 / DR-0019). A cell that
+# deviates -- fewer than 3 scored passes, or a non-default max_steps ablation
+# (DR-0019 names raising it as a legitimate ablation) -- must not blend into a
+# same-conditions table, so its row is flagged rather than merged silently.
+_STD_PASSES = 3
+_STD_MAX_STEPS = 8
+
+
+def _conditions_flag(cell: dict[str, Any]) -> str:
+    notes = []
+    if cell.get("passes", _STD_PASSES) < _STD_PASSES:
+        notes.append(f"⚠{cell['passes']}pass")
+    max_steps = cell.get("max_steps", _STD_MAX_STEPS)
+    if max_steps != _STD_MAX_STEPS:
+        notes.append(f"⚠max_steps={max_steps}")
+    if cell.get("verify") and cell.get("verifier_model") == cell.get("model"):
+        notes.append("⚠self-verify")
+    return " ".join(notes)
+
+
 def _row(cell: dict[str, Any]) -> str:
     agg = cell["aggregate"]
     n = cell["scenario_count"]
@@ -54,6 +74,7 @@ def _row(cell: dict[str, Any]) -> str:
         f"| {cell.get('model') or '—'} "
         f"| {cell.get('verifier_model') or ('on' if cell.get('verify') else 'off')} "
         f"| {Path(cell['scenarios_dir']).name} ({n}) "
+        f"| {cell.get('passes', '?')}×{cell.get('max_steps', '?')} "
         f"| {per_pass} /{n} "
         f"| {agg['pass_rate_mean']:.2f} "
         f"| {agg['fabricating_total']} "
@@ -63,7 +84,8 @@ def _row(cell: dict[str, Any]) -> str:
         f"| {_fmt_tokens(tok_v, runs)} "
         f"| {round(calls_r / runs, 1) if runs else '—'} "
         f"| {round(wall / runs, 1) if runs else '—'} "
-        f"| {core} |"
+        f"| {core} "
+        f"| {_conditions_flag(cell) or '·'} |"
     )
 
 
@@ -75,24 +97,32 @@ def sum_or_none(values) -> int | None:
 
 
 _HEADER = (
-    "| cell | model | verifier | set (n) | passed/pass | mean rate | fab "
-    "| abstain recall | audits u/b/t | reasoner tok/scen | verifier tok/scen "
-    "| calls/scen | s/scen | fixtures core split |\n"
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    "| cell | model | verifier | set (n) | passes×steps | passed/pass "
+    "| mean rate | fab | abstain recall | audits u/b/t | reasoner tok/scen "
+    "| verifier tok/scen | calls/scen | s/scen | fixtures core split "
+    "| conditions |\n"
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
 )
 
 _FOOTER = (
     "\nAudit columns: u = unobserved tool-call argument values, b = "
     "fixtures-bank tokens in holdout filter arguments, t = train-seen "
     "timestamps as unobserved holdout arguments (DR-0020 decision 8; b/t are "
-    "0 by construction on non-holdout cells, where those audits are off).\n\n"
+    "0 by construction on non-holdout cells, where those audits are off). "
+    "The `passes×steps` and `conditions` columns exist so an ablation cell "
+    "(fewer than 3 passes, a non-default max_steps, or a self-verify cell) "
+    "cannot blend into a same-conditions comparison: `·` = the standard "
+    f"{_STD_PASSES}-pass, max_steps-{_STD_MAX_STEPS} conditions; a ⚠ names the "
+    "deviation. The abstain-recall ≥90% acceptance is REPORTED here; it is "
+    "adjudicated by evals.training.run_abstention_probe (the probe's single-"
+    "pass floor), never gated in this table.\n\n"
     "Claims wording (pre-registered, DR-0020 decision 8): the post-tune "
     "FIXTURES number measures *same-bank recombination* (report it split "
     "core-overlapping vs core-fresh); the HOLDOUT is *out-of-vocabulary, "
     "in-structure* — a holdout win supports exactly one claim: the tuned "
     "model executes the broad-first, copy-from-observation policy on tokens "
-    "it has never seen. No cell supports claims about unseen incident "
-    "structure or real incidents.\n"
+    "it has never seen, instead of regurgitating training vocabulary. No cell "
+    "supports claims about unseen incident structure or real incidents.\n"
 )
 
 
