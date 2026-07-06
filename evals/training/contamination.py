@@ -25,11 +25,16 @@ from evals.scenarios.generator import bank_vocabulary, generate_scenarios
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "scenarios" / "fixtures"
 
 
-def holdout_scan_strings() -> tuple[str, ...]:
-    """Every concrete string the holdout bank can render: the literal token
+@functools.cache
+def bank_scan_strings(split: str) -> tuple[str, ...]:
+    """Every concrete string a split's bank can render: the literal token
     groups plus all template expansions (commit messages over module stems,
-    error signatures over modules/keys) plus the culprit file paths."""
-    v = bank_vocabulary("holdout")
+    error signatures over modules/keys) plus the culprit file paths. For
+    ``"holdout"`` this is the contamination scan set; for ``"fixtures"`` it is
+    the training-vocabulary set the matrix's holdout-trace audit looks for in
+    tool-call arguments (DR-0020 decision 8 -- the train split reuses the
+    fixtures bank verbatim)."""
+    v = bank_vocabulary(split)
     strings: set[str] = set()
     for group in (
         "routes",
@@ -54,6 +59,11 @@ def holdout_scan_strings() -> tuple[str, ...]:
     return tuple(sorted(strings))
 
 
+def holdout_scan_strings() -> tuple[str, ...]:
+    """The holdout bank's scan set -- the original DR-0020 decision-7 surface."""
+    return bank_scan_strings("holdout")
+
+
 # Boundary form: (?<!\w)tok(?!\w). Known, accepted limitation: for tokens whose
 # first char is non-word (the five holdout routes), a leak embedded directly
 # after a word char ("api/search") is NOT caught — the same lookbehind is what
@@ -65,29 +75,34 @@ def holdout_scan_strings() -> tuple[str, ...]:
 
 
 @functools.cache
-def _fast_scan() -> re.Pattern[str]:
+def _fast_scan(split: str) -> re.Pattern[str]:
     """One alternation over every scan string (longest-first so a superstring
     wins over its own substrings) — the clean-path check runs ~17x faster than
     a per-token loop over the 300-example corpus."""
-    toks = sorted(holdout_scan_strings(), key=len, reverse=True)
+    toks = sorted(bank_scan_strings(split), key=len, reverse=True)
     return re.compile(r"(?<!\w)(?:" + "|".join(map(re.escape, toks)) + r")(?!\w)")
 
 
 @functools.cache
-def _per_token() -> tuple[tuple[str, re.Pattern[str]], ...]:
+def _per_token(split: str) -> tuple[tuple[str, re.Pattern[str]], ...]:
     return tuple(
         (tok, re.compile(r"(?<!\w)" + re.escape(tok) + r"(?!\w)"))
-        for tok in holdout_scan_strings()
+        for tok in bank_scan_strings(split)
     )
 
 
-def find_holdout_leaks(text: str) -> set[str]:
-    """The holdout-renderable strings present in ``text`` (empty = clean).
-    Fast single-regex pass on the clean path; the per-token loop runs only to
-    NAME the leaked tokens once something matched."""
-    if not _fast_scan().search(text):
+def find_bank_tokens(text: str, split: str) -> set[str]:
+    """The ``split``-bank-renderable strings present in ``text`` (empty =
+    clean), boundary-aware. Fast single-regex pass on the clean path; the
+    per-token loop runs only to NAME the matched tokens once something hit."""
+    if not _fast_scan(split).search(text):
         return set()
-    return {tok for tok, pat in _per_token() if pat.search(text)}
+    return {tok for tok, pat in _per_token(split) if pat.search(text)}
+
+
+def find_holdout_leaks(text: str) -> set[str]:
+    """The holdout-renderable strings present in ``text`` (empty = clean)."""
+    return find_bank_tokens(text, "holdout")
 
 
 def assert_no_holdout_leakage(text: str, where: str) -> None:
