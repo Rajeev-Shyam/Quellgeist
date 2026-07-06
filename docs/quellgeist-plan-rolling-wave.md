@@ -202,7 +202,7 @@ Ran the *Wave Review Checklist* (below) at the boundary:
 - **Decisions:** DR-0019 opened (baseline + pinned serving artifact; refines DR-0008). Next id **DR-0020**.
 - **Next wave:** Wave 4 is re-scoped to task detail below. The holdout has now been *evaluated* (its purpose) but never tuned on — keep DR-0003's separation absolute: **train on the fixtures distribution, compare on the holdout.**
 
-## Wave 4 — Cost / Fine-tune *(current — re-scoped at the 2026-07-02 boundary)*
+## Wave 4 — Cost / Fine-tune *(COMPLETE — 2026-07-06; see the boundary review below)*
 
 **Objective:** the cost thesis with a measured (honest) result — *fine-tuned local Qwen3-4B + verifier ≈ frontier-only quality at a fraction of the cost* (a hypothesis to test, not a promise).
 **Entry criteria:** stable base-model behaviour + evals from Wave 3 — met.
@@ -221,21 +221,30 @@ Ran the *Wave Review Checklist* (below) at the boundary:
 
 ### Task 3: QLoRA fine-tune (user-run: local PoC → cloud)
 - [x] **Pipeline prepared (`finetune/`, runbook in its README):** CPU preflight (`prepare.py` vendors the official Instruct-2507 chat template — asserting no think-scaffolding — masking-audits all 316 rendered examples with the same code `train.py` trains with, and replaces the char-based length estimates with real BPE counts), shared rendering+labeling module, QLoRA train/export script (r=16, 2 epochs, no packing, Q4_K_M GGUF), hand-authored Modelfile writer (ChatML template parity-checked against the Jinja render; num_ctx pinned; repeat_penalty 1.0 across cells).
-- [ ] **User-run:** local PoC on the RTX 5060 (8GB; `--max-steps 30` smoke) or free Colab/Kaggle T4 (the DR-0008 spike's precedent) — Blackwell/bitsandbytes friction ⇒ go straight to T4.
-- [ ] **User-run:** the real run (2 epochs); export; `ollama create`; the serving checklist (template shows non-blank, GGUF eos=151645, one-scenario smoke). Commit the vendored template + render report.
+- [x] **User-run:** local PoC / T4 smoke — done on a free Colab T4 (loss 1.40→0.36 over 30 steps, no OOM at batch 1 × grad-accum 16 × seq 4096); Blackwell path skipped as planned.
+- [x] **User-run:** real run (2 epochs, loss→0.16), Q4_K_M GGUF exported, `ollama create` + serving checklist passed (ChatML template non-blank, eos=151645, broad-`query_logs` smoke). Vendored template + render report reproduced byte-identically at preflight (already committed).
 
 ### Task 4: The comparison matrix (the headline)
 - [x] **Tooling built (`evals/matrix/`)**: `run_cell` (one cell = model × verifier × scenario set × ≥3 passes; the DR-0020 §8 verifier pin is fail-closed — unpinned or self-identical verifier is a config error, not a warning; per-scenario cost from the backend's real usage reports; `cell.json` written only on completion, and stale artifacts cleared at start, so a partial run can't read as a measurement), `audits` (unobserved tool-call args; fixtures-bank tokens + train-seen timestamps on holdout traces; the core-overlap split — the DR's 21/65 fixtures overlap and 258 train cores are recomputed as permanent tests), `report` (cross-cell markdown with a `passes×steps`/`conditions` column that flags any ablation cell so it can't blend into a same-conditions table, and the pre-registered claims wording verbatim in the footer). Tests 159 → 178. Adversarially reviewed (measurement-integrity pass); **known, accepted limitations, stated not implied:** (a) `--passes` defaults to 3 but is not itself fail-closed — a `<3`-pass cell runs and is *flagged* in the report rather than refused (an intentional escape for smokes/ablations); (b) the verifier pin is exact model-string equality, so two litellm aliases for one artifact would slip past — pin to a different family (the BASE artifact), not a re-spelling; (c) the unobserved-args and train-timestamp audits are computed and their *results* persisted per scenario, but full observation transcripts are not stored, so those two audits are re-verifiable only by re-running the cell (the bank-token audit is recomputable from the stored `tool_calls`). The measured **runs** below remain open.
-- [ ] Fine-tuned vs base vs the Gemma-4-31B stand-in (and optionally a frontier model / Claude-as-verifier via the home Max plan), with/without verifier, on **cost AND quality**, primary axis = **the holdout**; **≥3 passes per cell** (local decoding is not run-to-run deterministic — DR-0019).
+- [x] Fine-tuned vs base vs the Gemma-4-31B frontier stand-in (`cerebras/gemma-4-31b`), with/without verifier, on cost AND quality, primary axis = the holdout, 3 passes/cell. **Result: base 0/16 → tuned 12/16; frontier 10/16 (directional); `wave4-qwen-finetune.md`.** (Frontier numbers are directional — single/two-pass — a fully-logged 3-pass frontier column is a Wave-5 follow-up.)
 - [x] Instrument real per-scenario token/call counts during these runs (observation sizes, loop turns, verifier calls) — measured cost, not estimates. *(Instrumentation shipped with the tooling: `CallUsage` records on the provider, read as per-scenario deltas by `run_cell`; the numbers land with the runs.)*
-- [ ] Measurement integrity (DR-0020): **pin `QG_VERIFIER_MODEL` explicitly in every cell** (the `QG_MODEL` fallback would let the tuned model verify itself); trace-level audits alongside pass rates (no unobserved filter values in any tool-call argument; no fixtures-bank tokens or train-seen timestamps as holdout filter args); report fixtures split into core-overlapping vs core-fresh; run the abstention-recall and structure-perturbation probes; use DR-0020's pre-registered claims wording (holdout = out-of-vocabulary, in-structure). *(All of this is enforced or recorded by `evals/matrix/run_cell`; the probes keep their own runners.)*
+- [x] Measurement integrity (DR-0020): verifier pinned to the BASE artifact in every cell; trace audits clean on all tuned cells (0 unobserved/bank/timestamp violations vs the base's ~281/pass); fixtures reported core-split (overlap 0.71 n=21 / fresh 0.75 n=44); abstention + structure probes run (0/12 model · 6/12 system; 7/10); pre-registered claims wording applied throughout.
 
 ### Task 5: Publish
-- [ ] Case study + README cost story update — **including the case where local proves insufficient (still a valid finding)**.
+- [x] Case study (`wave4-qwen-finetune.md`) + README cost story updated — the honest two-sided result: frontier-competitive capability at $0, `resource_exhaustion` unlearned, and adversarial abstention a frontier-shared 6/12 ceiling.
 
-**Exit criteria:** a published, honest cost/quality comparison across the holdout.
+**Exit criteria:** a published, honest cost/quality comparison across the holdout — **met** (`docs/case-studies/wave4-qwen-finetune.md`).
 
-## Wave 5 — Polish & Ship *(rolling)*
+### Wave 4 → Wave 5 boundary review (2026-07-06)
+
+- **Result:** the DR-0020 QLoRA fine-tune of Qwen3-4B, trained on a free Colab T4 and measured with `evals/matrix`. Base **0/16 → tuned 12/16** on the reserved holdout, **0 fabrication**, **0 speculative-filtering** (base ~281/pass), and *cheaper* than the base (3,439 vs 7,558 reasoner tok/scenario; 3.1 vs 7.8 calls). Non-memorisation triangulated three ways (fixtures 0.74 ≈ holdout 0.75; core-fresh 0.75 ≥ core-overlap 0.71; structure probe 7/10 with real culprit-not-newest reasoning). Full write-up: `docs/case-studies/wave4-qwen-finetune.md`.
+- **What this wave taught us that changes downstream:** (a) the fine-tune installs a policy an untuned 31B frontier does *not* follow — the Gemma-4-31B stand-in scored **10/16** on the same holdout (below the tuned 4B) with 77 speculative-filter violations, so the tuned local 4B is **frontier-competitive at $0**; (b) **adversarial abstention is an unsolved, shared ceiling** — the tuned+verifier system's 6/12 recall *equals* the frontier's own 6/12, catching complementary traps (frontier: timing; verifier: evidence-absence), which points at a timing-aware verifier as a future upgrade; (c) the tuned model's *intrinsic* abstention collapsed to 0/12 (the verifier is load-bearing), and one class (`resource_exhaustion`) did not transfer at all (0/N; the frontier passes it) — a training-coverage gap.
+- **Acceptance vs DR-0019/DR-0020:** holdout > 0/16 ✅ (12/16); fabrication 0 everywhere ✅; abstain recall ≥ 90% ❌ (0/12 model, 6/12 system — but frontier-parity; the bar is unmet by *every* configuration, a task-hardness finding, not a fine-tune-specific failure).
+- **Docs brought current (this review):** this plan (Task 3/4/5 ticked, Wave 4 closed, Wave 5 promoted to current), the ADR log (DR-0019/DR-0020 marked measured), the README status/roadmap/cost story, and the new fine-tune case study.
+- **Cut/defer check:** Wave 6 (resolution-verification) remains the cut-first item. Two follow-ups logged for Wave 5+: a fully-logged 3-pass frontier column (this wave's frontier numbers are directional), and a targeted `resource_exhaustion` trajectory-mix + a timing-aware verifier (DR-0021 territory, deferred).
+- **Next wave:** Wave 5 (Polish & Ship) — re-scoped to full task/step detail at kickoff; strong enough to launch on the tuned model.
+
+## Wave 5 — Polish & Ship *(current — re-scope to task detail at kickoff)*
 
 **Objective:** make it adoptable and launch it.
 **Entry criteria:** Wave 3 done (Wave 4 ideally done; can ship on base model if 4 slips).
