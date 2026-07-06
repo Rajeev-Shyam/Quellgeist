@@ -20,16 +20,18 @@ never free text. Two ideas set it apart:
 - **Abstain-over-hallucinate.** A confidently-stated wrong cause is the worst
   possible answer, so *"insufficient evidence"* is a first-class outcome.
 
-> **Status: WIP — Wave 4 in progress (cost / fine-tune).** All three failure
-> classes generate and gate across a 65-scenario suite; the best full run is
-> **61/65 passed, 0 fabricated** (Cerebras Gemma-4-31B; `resource_exhaustion` a
-> clean 15/15), and the advisory **LLM-judge is validated** at **Cohen's kappa
-> 0.81**. The Wave-4 baseline is now measured: the intended local reasoner (base
-> Qwen3-4B via Ollama) scores **0/65 fixtures · 0/16 holdout — with zero
-> fabrication across all 81**: reliably safe, not yet useful, the honest floor
-> the fine-tune must beat (DR-0019). When this agent misses it's *incomplete* or
-> *too cautious*, never confidently fabricating. See
-> [Status & roadmap](#status--roadmap) · [baseline case study](docs/case-studies/wave4-qwen-baseline.md).
+> **Status: Wave 4 complete — the fine-tune works.** The DR-0020 QLoRA fine-tune
+> of the local reasoner (Qwen3-4B, served via Ollama) took it from the base's
+> **0/16 holdout to 12/16** — zero fabrication, zero speculative-filtering, and
+> *cheaper* than the base — while **beating a 31B frontier** (Gemma-4-31B, 10/16)
+> on the same holdout at **$0, fully offline**. Non-memorisation is triangulated
+> three ways (fixtures ≈ holdout; core-fresh ≥ core-overlap; structure probe 7/10).
+> Two honest limits: the `resource_exhaustion` class didn't transfer (0/N; the
+> frontier passes it), and adversarial-abstention recall is **6/12** at the system
+> level — a ceiling the 31B frontier *shares* (also 6/12), not a fine-tune
+> regression. When this agent misses it's *incomplete* or *too cautious*, never
+> confidently fabricating. See
+> [Status & roadmap](#status--roadmap) · [fine-tune case study](docs/case-studies/wave4-qwen-finetune.md).
 
 ## Why it's different
 
@@ -218,8 +220,8 @@ The full decision history lives in the
 | 1 | Bad-deploy slice: demo → break → diagnose → postmortem; eval harness + CI | ✅ done — spine built & unit-tested |
 | 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ✅ built — keyless deterministic gate + opt-in verifier/judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation + a reliability *rate* carry into Wave 3 |
 | 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ✅ done — 3 classes across a 65-scenario suite; first full run **61/65, 0 fabricated**; judge validated (kappa 0.81). See the [reliability](docs/case-studies/wave3-reliability-rate.md) + [judge](docs/case-studies/wave3-judge-validation.md) case studies |
-| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | 🚧 **in progress** — baseline measured: base Qwen3-4B **0/65 fixtures · 0/16 holdout · 0 fabricated** — every failure safe (80 abstentions + 1 under-cited correct cause), the floor the fine-tune must beat (DR-0019, [case study](docs/case-studies/wave4-qwen-baseline.md)) |
-| 5 | Polish & ship: HTML render, security pass, MCP registry, launch | ⏳ deferred |
+| **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | ✅ **done** — base **0/16 → tuned 12/16** holdout (0 fabricated, 0 speculative-filter, cheaper than base); frontier-competitive vs Gemma-4-31B (beats it 10/16 on capability, ties 6/12 on abstention); `resource_exhaustion` unlearned + adversarial abstention a shared 6/12 ceiling ([case study](docs/case-studies/wave4-qwen-finetune.md), DR-0019/DR-0020) |
+| **5** | Polish & ship: HTML render, security pass, MCP registry, launch | 🚧 **current** |
 | 6 | Resolution-verification loop | ⏳ cut-first |
 
 Deferred features carry `NotImplementedError` stubs on purpose (e.g.
@@ -227,7 +229,7 @@ Deferred features carry `NotImplementedError` stubs on purpose (e.g.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **129 tests** (ruff +
+The deterministic CI gate is the reliability contract: **179 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
 cite-based judge gate, the verifier and advisory LLM-judge, parameterised
