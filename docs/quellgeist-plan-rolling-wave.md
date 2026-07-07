@@ -244,12 +244,86 @@ Ran the *Wave Review Checklist* (below) at the boundary:
 - **Cut/defer check:** Wave 6 (resolution-verification) remains the cut-first item. Two follow-ups logged for Wave 5+: a fully-logged 3-pass frontier column (this wave's frontier numbers are directional), and a targeted `resource_exhaustion` trajectory-mix + a timing-aware verifier (DR-0021 territory, deferred).
 - **Next wave:** Wave 5 (Polish & Ship) — re-scoped to full task/step detail at kickoff; strong enough to launch on the tuned model.
 
-## Wave 5 — Polish & Ship *(current — re-scope to task detail at kickoff)*
+## Wave 5 — Polish & Ship *(current — re-scoped to task detail 2026-07-07)*
 
-**Objective:** make it adoptable and launch it.
-**Entry criteria:** Wave 3 done (Wave 4 ideally done; can ship on base model if 4 slips).
-**Rough tasks:** **render postmortems to an HTML/Markdown file** (defer a live web UI to post-v1); README + architecture doc + **≥1 written case study**; **security pass** on the published MCP servers — run an MCP scanner (`mcp-scan` / Cisco `mcp-scanner`) + `bandit`/`semgrep`/`pip-audit` in CI, ship `SECURITY.md` + a threat-model paragraph (input validation, no SSRF, scoped access, least privilege); **official MCP Registry** publish + **CI auto-publish** (GitHub OIDC) for the custom server(s); claim Glama/PulseMCP/mcp.so listings; launch posts (GitHub, HN, r/mcp, r/LocalLLaMA, Product Hunt) + aim for the PulseMCP newsletter.
-**Exit criteria:** public repo, runnable demo, evals/badge live, server(s) registered, launch posted.
+**Objective:** make it adoptable and launch it. The *widest* wave by task count
+but the *shallowest* by risk — bounded engineering + launch work, no research
+uncertainty. Ship on the tuned model (Wave 4 done).
+**Entry criteria:** Wave 4 complete (tuned model measured, case study published) — met.
+**Ordering (recommended):** security pass first (a responsible-publish prerequisite,
+CI-shaped and high-confidence) → HTML postmortem render (self-contained, demoable)
+→ MCP Registry + OIDC auto-publish (the real new engineering) → launch last. Docs
+(architecture doc + polish) run alongside; much is already done.
+
+### Task 1: Security pass on the published MCP servers *(do first — publish prerequisite)*
+- [ ] Wire static/dependency scanners into CI as their **own** job (keep the
+      deterministic lint+test gate clean and fast; don't couple a scanner flake to
+      the merge gate). `bandit` over `src/` (the demo's intentional toy-auth is
+      `# nosec`-annotated with a comment pointing at `SECURITY.md`), `pip-audit`
+      over the locked deps. Start non-gating (reporting) if a first run surfaces
+      noise, then promote to gating once clean — mirror `eval.yml`'s out-of-band
+      precedent, but the scanners are keyless so they *can* gate on PRs once green.
+- [ ] Consider `semgrep` (Python + a light MCP ruleset) — add only if it earns its
+      keep over bandit; don't stack redundant tools.
+- [ ] Run an **MCP-specific scanner** (`mcp-scan` / Cisco `mcp-scanner`) against the
+      three servers (`query_logs`, `get_recent_commits`, `query_metrics`) — tool-
+      poisoning / prompt-injection / over-broad-scope checks. Capture the clean
+      report; this is a launch talking-point, not necessarily a CI step (it needs a
+      running server).
+- [ ] Expand `SECURITY.md` with a **threat-model section** (DR-0005): input
+      validation, no SSRF (tools read local files only, never the network), scoped
+      access (env-configured paths), least privilege (read-only — no write/execute).
+      One honest paragraph per property, grounded in the actual code.
+- **Acceptance:** scanner job green (or a documented, justified allowlist);
+  MCP-scanner report clean; `SECURITY.md` threat model merged; DR-0005 closed.
+
+### Task 2: HTML postmortem render *(Markdown already ships)*
+- [ ] The Markdown renderer (`render_postmortem` / `write_postmortem`, CLI `--out`)
+      already exists — add an **HTML** target: a self-contained, style-inlined page
+      (no external assets), deterministic and model-free, sharing the same
+      `Diagnosis` render path so the two formats can't drift. CLI `--format md|html`
+      (infer from the `--out` extension when given).
+- [ ] Unit-test the HTML render the same way Markdown is tested (abstained case,
+      evidence-handle citations, escaping). Live web UI stays **deferred to post-v1**.
+- **Acceptance:** `quellgeist diagnose … --out postmortem.html` writes a valid
+  standalone page; tests cover it; deterministic gate stays green.
+
+### Task 3: Docs — architecture doc + polish *(largely pre-done)*
+- [ ] Write `docs/architecture.md`: the loop → tools (MCP servers) → verifier →
+      postmortem pipeline, the model-agnostic seam (`QG_MODEL`), and the
+      train/holdout separation. A diagram (Mermaid) + prose.
+- [ ] Polish pass on README (status/roadmap/cost story are current post-Wave-4);
+      confirm ≥1 written case study is linked (the fine-tune case study exists;
+      Wave 0/2/3/4 studies exist). Ensure the demo runs from a clean clone.
+- **Acceptance:** architecture doc merged and linked from README; clean-clone demo
+  path verified.
+
+### Task 4: Publish the MCP servers *(the meatiest genuinely-new chunk)*
+- [ ] Author `server.json` per the official **MCP Registry** schema for the custom
+      server(s); validate against the registry's published schema.
+- [ ] **CI auto-publish** via GitHub **OIDC** (`mcp-publisher` with the OIDC login) —
+      trigger on a tagged release, no long-lived token.
+- [ ] Claim **Glama / PulseMCP / mcp.so** listings once registered.
+- **Acceptance:** server(s) resolvable in the MCP Registry; a tag push publishes via
+  OIDC with no stored secret; listings live.
+
+### Task 5: Launch *(last)*
+- [ ] Posts: GitHub release, HN, r/mcp, r/LocalLLaMA, Product Hunt; aim for the
+      PulseMCP newsletter. Lead with the security-first thesis
+      (abstain-over-hallucinate + read-only, scoped, least-privilege servers) and
+      the $0-offline frontier-competitive result — honestly, with the named gaps.
+- **Acceptance:** launch posted; evals/badge live; repo public and demo-runnable.
+
+**Exit criteria:** public repo, runnable demo, evals/badge live, server(s)
+registered, launch posted. After Wave 5, only Wave 6 (resolution-verification,
+cut-first) remains — **Wave 5 is the last required wave before a shippable v1.**
+
+**Backlog carried in from Wave 4 (do NOT block the launch on these):** (a) a
+fully-logged 3-pass frontier column — Wave 4's `gemma-4-31b` numbers are
+directional; re-run both frontier cells off-GPU (API-only) to promote them and
+regenerate `matrix-report.md`; (b) a targeted `resource_exhaustion` trajectory-mix
++ a timing-aware verifier — a **new training decision (DR-0021), out of scope for a
+polish-and-ship wave.** Don't reopen training inside Wave 5.
 
 ## Wave 6 — Resolution-verification Loop *(deferred / cut-first)*
 
