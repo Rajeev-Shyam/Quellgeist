@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.Rajeev-Shyam/quellgeist-commits",
+  "description": "Read-only MCP server exposing get_recent_commits over a local deploy/commit log (JSON). Part of Quellgeist first-line incident triage.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/Rajeev-Shyam/Quellgeist",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "quellgeist",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "runtimeArguments": [
+        { "type": "named", "name": "--from", "value": "quellgeist" },
+        { "type": "positional", "value": "quellgeist-commits-mcp" }
+      ],
+      "environmentVariables": [
+        {
+          "name": "QG_DEPLOY_LOG",
+          "description": "Path to the deploy/commit log to read (default: demo/deploy_log.json, resolved against the working directory).",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

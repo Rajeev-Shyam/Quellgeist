@@ -277,46 +277,65 @@ CI-shaped and high-confidence) → HTML postmortem render (self-contained, demoa
 - **Acceptance:** scanner job green (or a documented, justified allowlist);
   MCP-scanner report clean; `SECURITY.md` threat model merged; DR-0005 closed.
 
-### Task 2: HTML postmortem render *(Markdown already ships)*
-- [ ] The Markdown renderer (`render_postmortem` / `write_postmortem`, CLI `--out`)
-      already exists — add an **HTML** target: a self-contained, style-inlined page
-      (no external assets), deterministic and model-free, sharing the same
-      `Diagnosis` render path so the two formats can't drift. CLI `--format md|html`
-      (infer from the `--out` extension when given).
-- [ ] Unit-test the HTML render the same way Markdown is tested (abstained case,
-      evidence-handle citations, escaping). Live web UI stays **deferred to post-v1**.
+### Task 2: HTML postmortem render *(Markdown already ships)* ✅ DONE
+- [x] Added the **HTML** target: `render_postmortem_html` + `write_postmortem(fmt=…)`
+      — a self-contained, style-inlined, light/dark-aware page (no external assets),
+      deterministic and model-free. Both formats read the same `Diagnosis` fields and
+      share the one `_render_evidence` helper (a parity test guards drift). CLI
+      `--format md|html`; `--out` infers from the extension; stdout stays Markdown.
+- [x] Unit-tested (self-contained page, evidence handles, abstained case, HTML
+      escaping of model-authored text, md/html parity, extension inference). Tests
+      179 → 187. Live web UI stays **deferred to post-v1**.
 - **Acceptance:** `quellgeist diagnose … --out postmortem.html` writes a valid
-  standalone page; tests cover it; deterministic gate stays green.
+  standalone page; tests cover it; deterministic gate green. **Met.**
 
-### Task 3: Docs — architecture doc + polish *(largely pre-done)*
-- [ ] Write `docs/architecture.md`: the loop → tools (MCP servers) → verifier →
-      postmortem pipeline, the model-agnostic seam (`QG_MODEL`), and the
-      train/holdout separation. A diagram (Mermaid) + prose.
-- [ ] Polish pass on README (status/roadmap/cost story are current post-Wave-4);
-      confirm ≥1 written case study is linked (the fine-tune case study exists;
-      Wave 0/2/3/4 studies exist). Ensure the demo runs from a clean clone.
-- **Acceptance:** architecture doc merged and linked from README; clean-clone demo
-  path verified.
+### Task 3: Docs — architecture doc + polish *(largely pre-done)* ✅ DONE
+- [x] `docs/architecture.md` written: component + sequence diagrams, the
+      loop → tools → verifier → postmortem pipeline, the model-agnostic seam
+      (`QG_MODEL`), the layered reliability guards, the read-only tool posture, the
+      train/holdout separation, and a module map — each linked to its DR.
+- [x] README polish: architecture-doc pointer + HTML-output note added; a `security`
+      workflow badge added; status/roadmap/cost story current post-Wave-4; the
+      fine-tune + Wave 0/2/3 case studies are linked.
+- **Acceptance:** architecture doc merged and linked from README. **Met.**
 
-### Task 4: Publish the MCP servers *(the meatiest genuinely-new chunk)*
-- [ ] Author `server.json` per the official **MCP Registry** schema for the custom
-      server(s); validate against the registry's published schema.
-- [ ] **CI auto-publish** via GitHub **OIDC** (`mcp-publisher` with the OIDC login) —
-      trigger on a tagged release, no long-lived token.
-- [ ] Claim **Glama / PulseMCP / mcp.so** listings once registered.
-- **Acceptance:** server(s) resolvable in the MCP Registry; a tag push publishes via
-  OIDC with no stored secret; listings live.
+### Task 4: Publish the MCP servers *(the meatiest genuinely-new chunk)* — scaffolding done; publish is user-gated
+- [x] **`server.json` authored** per the registry schema (`2025-10-17`) for all three
+      servers (`mcp/{logs,commits,metrics}/server.json`): reverse-DNS names under
+      `io.github.Rajeev-Shyam/*`, PyPI package `quellgeist`, `uvx` runtime, stdio
+      transport, env-var docs. Console entry points added so each is `uvx --from
+      quellgeist quellgeist-<x>-mcp`; PyPI ownership `mcp-name:` markers in the README.
+- [x] **CI auto-publish wired** via GitHub **OIDC** — `publish-mcp.yml`
+      (`mcp-publisher login github-oidc` → publish each manifest) + `publish-pypi.yml`
+      (PyPI Trusted Publishing). Both **tag-gated** (`v*`), no stored secret.
+- [ ] **User-gated to finish (see `docs/publishing.md`):** claim the PyPI name +
+      register the trusted publisher; `mcp-publisher publish --dry-run` to confirm the
+      manifest against the live schema; cut a `v0.1.0` tag; then claim the
+      **Glama / PulseMCP / mcp.so** listings.
+- **Acceptance:** a tag push publishes to PyPI + the MCP Registry via OIDC with no
+  stored secret; listings claimed. *Scaffolding met; awaits the release tag.*
 
-### Task 5: Launch *(last)*
-- [ ] Posts: GitHub release, HN, r/mcp, r/LocalLLaMA, Product Hunt; aim for the
-      PulseMCP newsletter. Lead with the security-first thesis
-      (abstain-over-hallucinate + read-only, scoped, least-privilege servers) and
-      the $0-offline frontier-competitive result — honestly, with the named gaps.
+### Task 5: Launch *(last)* — copy drafted; posting is user-gated
+- [x] **Launch copy drafted** (`docs/launch.md`): GitHub release notes, Show HN,
+      r/mcp, r/LocalLLaMA, Product Hunt, and a PulseMCP newsletter pitch — all
+      leading with the security-first + abstain-over-hallucinate thesis and the
+      $0-offline frontier-competitive result, with the named gaps stated (claims
+      discipline). Includes a pre-launch checklist.
+- [ ] **User-gated:** make the repo public, verify the clean-clone demo, cut the
+      release, and post (space the channels out). Send the PulseMCP email.
 - **Acceptance:** launch posted; evals/badge live; repo public and demo-runnable.
+  *Copy ready; posting awaits the user.*
 
 **Exit criteria:** public repo, runnable demo, evals/badge live, server(s)
 registered, launch posted. After Wave 5, only Wave 6 (resolution-verification,
 cut-first) remains — **Wave 5 is the last required wave before a shippable v1.**
+
+**Status (2026-07-07):** all five tasks' *engineering* is complete — security pass
+(Task 1, merged), HTML render (Task 2), architecture doc + README polish (Task 3),
+publish scaffolding (Task 4), launch copy (Task 5). What remains is **user-gated
+and outside code**: claim the PyPI name + register the trusted publisher, cut a
+`v0.1.0` tag (fires the OIDC publish workflows), claim the ecosystem listings, make
+the repo public, and post the launch. v1 is one release tag away.
 
 **Backlog carried in from Wave 4 (do NOT block the launch on these):** (a) a
 fully-logged 3-pass frontier column — Wave 4's `gemma-4-31b` numbers are

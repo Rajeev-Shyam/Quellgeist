@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.Rajeev-Shyam/quellgeist-metrics",
+  "description": "Read-only MCP server exposing query_metrics over local metric time-series (JSON), for resource-exhaustion signals. Part of Quellgeist first-line incident triage.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/Rajeev-Shyam/Quellgeist",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "quellgeist",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "runtimeArguments": [
+        { "type": "named", "name": "--from", "value": "quellgeist" },
+        { "type": "positional", "value": "quellgeist-metrics-mcp" }
+      ],
+      "environmentVariables": [
+        {
+          "name": "QG_METRICS_PATH",
+          "description": "Path to the metric series to read (default: demo/metrics.json, resolved against the working directory).",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

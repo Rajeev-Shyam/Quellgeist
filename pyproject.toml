@@ -29,6 +29,11 @@ dependencies = [
 
 [project.scripts]
 quellgeist = "quellgeist.cli:main"
+# stdio MCP servers, so each is runnable as `uvx --from quellgeist <script>` once
+# the package is on PyPI (Wave 5, Task 4 — see docs/publishing.md).
+quellgeist-logs-mcp = "quellgeist.servers.logs_mcp:main"
+quellgeist-commits-mcp = "quellgeist.servers.commits_mcp:main"
+quellgeist-metrics-mcp = "quellgeist.servers.metrics_mcp:main"
 
 [dependency-groups]
 dev = ["pytest", "ruff", "black", "pre-commit"]

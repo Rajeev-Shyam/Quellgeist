@@ -1,0 +1,34 @@
+name: publish-pypi
+
+# Build + publish the package to PyPI on a version tag, via PyPI Trusted
+# Publishing (OIDC) -- no stored token. The MCP Registry publish
+# (publish-mcp.yml) depends on the package existing on PyPI, so this runs first.
+#
+# ONE-TIME SETUP (see docs/publishing.md): register a trusted publisher for this
+# repo + this workflow file at https://pypi.org/manage/account/publishing/.
+# Inert until a `v*` tag is pushed.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # PyPI Trusted Publishing (OIDC) -- no API token needed
+
+jobs:
+  pypi:
+    name: build + publish to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1

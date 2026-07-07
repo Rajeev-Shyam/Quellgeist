@@ -105,6 +105,18 @@ def test_diagnose_writes_out_file(monkeypatch, capsys, tmp_path):
     assert "log #2" in out_file.read_text(encoding="utf-8")
 
 
+def test_diagnose_writes_html_out_file(monkeypatch, capsys, tmp_path):
+    _wire(monkeypatch, [_DIAGNOSE])
+    out_file = tmp_path / "pm.html"  # extension -> HTML
+    rc = cli.main(["diagnose", "--out", str(out_file)])
+    assert rc == 0
+    body = out_file.read_text(encoding="utf-8")
+    assert body.startswith("<!doctype html>")
+    assert "log #2" in body
+    # stdout stays markdown regardless of the file format
+    assert "log #2" in capsys.readouterr().out
+
+
 def test_show_trace_goes_to_stderr(monkeypatch, capsys):
     _wire(monkeypatch, [_DIAGNOSE])
     rc = cli.main(["diagnose", "--show-trace"])

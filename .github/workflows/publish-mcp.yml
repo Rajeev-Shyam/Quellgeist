@@ -1,0 +1,37 @@
+name: publish-mcp
+
+# Publish the server.json manifests (mcp/*/server.json) to the Official MCP
+# Registry on a version tag, via GitHub OIDC -- no secrets. The
+# io.github.Rajeev-Shyam/* namespace is authenticated by this repo's OIDC token.
+#
+# Runs AFTER the package is on PyPI (publish-pypi.yml): the registry verifies
+# PyPI package ownership via the `mcp-name:` markers in the package README.
+# Inert until a `v*` tag is pushed. See docs/publishing.md.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC for mcp-publisher login
+
+jobs:
+  publish:
+    name: publish server.json to the MCP Registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+      - name: Log in via GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+      - name: Publish each server manifest
+        run: |
+          for d in mcp/*/; do
+            echo "::group::publishing ${d}server.json"
+            (cd "$d" && "$GITHUB_WORKSPACE/mcp-publisher" publish)
+            echo "::endgroup::"
+          done

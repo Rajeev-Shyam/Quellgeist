@@ -1,6 +1,7 @@
 # Quellgeist
 
 [![ci](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/ci.yml/badge.svg)](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/ci.yml)
+[![security](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/security.yml/badge.svg)](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/security.yml)
 [![reliability](https://img.shields.io/badge/reliability-61%2F65%20·%200%20fabricated-brightgreen)](docs/case-studies/wave3-reliability-rate.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
@@ -97,6 +98,22 @@ agent currently reuses the same tool *functions* in-process behind a `ToolSpec`
 registry; a stdio MCP-*client* path (the agent driving the servers over the
 wire) is on the roadmap (DR-0010).
 
+> **Deep dive:** [`docs/architecture.md`](docs/architecture.md) walks the full
+> pipeline (loop → tools → verifier → postmortem), a sequence diagram, the module
+> map, and the cross-cutting design decisions.
+
+<!-- MCP Registry ownership markers: the registry verifies PyPI package ownership
+     by finding these `mcp-name:` strings in the published package README.
+     See docs/publishing.md. (Rendered invisibly.)
+mcp-name: io.github.Rajeev-Shyam/quellgeist-logs
+mcp-name: io.github.Rajeev-Shyam/quellgeist-commits
+mcp-name: io.github.Rajeev-Shyam/quellgeist-metrics
+-->
+
+The servers publish to the **Official MCP Registry** on each tagged release (see
+[`docs/publishing.md`](docs/publishing.md)); once published each is runnable with
+`uvx --from quellgeist quellgeist-logs-mcp` (or `…-commits-mcp` / `…-metrics-mcp`).
+
 ## Example session
 
 Inject the bad deploy — it drops a marker that flips `verify_token` into a
@@ -149,6 +166,10 @@ The point isn't the prose — it's that **`log #2`** and **`commit a1b2c3d`** ar
 exact handles into the real signals, not paraphrases. A live run additionally
 fills in a one-line summary and suggested actions, and abstains outright when the
 evidence is too weak to name a confident cause.
+
+Write the postmortem to a file with `--out postmortem.md`, or as a self-contained
+HTML page with `--out postmortem.html` (or `--format html`) — same deterministic
+render, no external assets.
 
 ## Running the model
 
