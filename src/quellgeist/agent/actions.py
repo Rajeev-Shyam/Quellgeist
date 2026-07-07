@@ -20,16 +20,24 @@ class JSONActionError(ValueError):
 def extract_json(text: str) -> dict[str, Any]:
     """Return the first top-level JSON object in ``text``.
 
-    Finds the first ``{`` and decodes from there, so a model that emits a short
-    preamble or a code fence before the object still parses. Raises
-    ``JSONActionError`` if there is no object or it is malformed."""
+    Scans each ``{`` in order and decodes from there, returning the first that
+    yields a JSON object. This tolerates a model that emits a preamble or a code
+    fence before the object -- *including* a preamble that itself contains a stray
+    ``{`` (e.g. ``Based on the logs {id 2} I conclude: {"action": ...}``), which a
+    decode-from-the-first-brace approach would choke on. Raises ``JSONActionError``
+    if no ``{`` begins a valid JSON object."""
+    decoder = json.JSONDecoder()
     start = text.find("{")
     if start == -1:
         raise JSONActionError("no JSON object found in model output")
-    try:
-        obj, _ = json.JSONDecoder().raw_decode(text, start)
-    except json.JSONDecodeError as e:
-        raise JSONActionError(f"invalid JSON: {e}") from e
-    if not isinstance(obj, dict):
-        raise JSONActionError("the JSON action must be an object")
-    return obj
+    last_err: json.JSONDecodeError | None = None
+    while start != -1:
+        try:
+            obj, _ = decoder.raw_decode(text, start)
+        except json.JSONDecodeError as e:
+            last_err = e  # keep scanning past a non-JSON brace in a preamble
+        else:
+            if isinstance(obj, dict):
+                return obj
+        start = text.find("{", start + 1)
+    raise JSONActionError(f"invalid JSON: {last_err}")

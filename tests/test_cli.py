@@ -138,3 +138,51 @@ def test_provider_failure_exits_nonzero(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert rc == 1
     assert "diagnosis failed" in err
+
+
+def test_format_without_out_is_rejected(capsys):
+    rc = cli.main(
+        ["diagnose", "--format", "html"]
+    )  # no --out -> silent no-op otherwise
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "--format applies to --out" in err
+
+
+def test_out_write_failure_is_clean_not_a_traceback(monkeypatch, capsys, tmp_path):
+    _wire(monkeypatch, [_DIAGNOSE])
+    # a directory path is unwritable as a file -> OSError inside write_postmortem
+    rc = cli.main(["diagnose", "--out", str(tmp_path)])
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert "could not write --out" in err
+    assert "Traceback" not in err
+
+
+def test_keyless_run_is_clean_and_hints(tmp_path):
+    """A real keyless run (default gemini, no key) must exit 1 with a one-line
+    error + hint and NO litellm traceback/log-noise (the 'never a traceback'
+    contract). Runs in a subprocess to exercise the real litellm path."""
+    import os
+    import subprocess
+    import sys
+
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("GEMINI_API_KEY", "GOOGLE_API_KEY")
+    }
+    env["QG_MODEL"] = "gemini/gemini-3.5-flash"  # force the no-key gemini path
+    proc = subprocess.run(
+        [sys.executable, "-m", "quellgeist.cli", "diagnose"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=90,
+    )
+    combined = proc.stdout + proc.stderr
+    assert proc.returncode == 1, combined
+    assert "Traceback" not in combined, combined
+    assert "error: diagnosis failed" in combined
+    assert "hint:" in combined
+    assert "GEMINI_API_KEY" in combined  # points at the actual fix

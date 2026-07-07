@@ -39,14 +39,15 @@ uv run pre-commit install
 Work is sequenced into waves (see
 [`docs/quellgeist-plan-rolling-wave.md`](docs/quellgeist-plan-rolling-wave.md)):
 
-- **Wave 1 (current):** thin vertical slice — bad-deploy diagnosis end-to-end.
-  The loop *measures* citation fidelity (`cited_but_unseen`); it does not yet
-  enforce it.
-- **Wave 2:** reliability core — verifier pass, deterministic fabrication check,
-  abstention, and an LLM-as-judge validated against a human gold subset.
-- **Wave 3+:** breadth (more failure classes + metrics), the cost/fine-tune
-  study, then polish and launch.
+- **Waves 0–4 (done):** the model bet (Qwen3-4B), the bad-deploy slice + eval
+  harness/CI, the reliability core (verifier + deterministic fabrication check +
+  abstention + validated LLM-judge), breadth (3 failure classes, metrics, a
+  65-scenario suite), and the cost/fine-tune study (tuned 4B → 12/16 holdout).
+- **Wave 5 (current):** polish & ship — HTML render, security pass, MCP-registry
+  publish scaffolding, launch. Engineering is complete; the release tag + launch
+  posts are the remaining steps.
+- **Wave 6 (deferred, cut-first):** the resolution-verification loop.
 
-Please keep PRs within the current wave's scope; deferred features carry
-`NotImplementedError` stubs on purpose. To tackle a future wave, open an issue
-to discuss first.
+Please keep PRs within the current wave's scope; later waves are scoped but
+intentionally unimplemented. To tackle a future wave, open an issue to discuss
+first.

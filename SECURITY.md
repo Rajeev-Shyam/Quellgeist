@@ -22,7 +22,8 @@ window to address the issue before any public disclosure.
   variables, which LiteLLM reads).
 - The deterministic CI gate (lint + `pytest`) is **keyless** by design, so it
   runs on fork pull requests without exposing secrets. Live model-driven evals
-  are key-gated and deferred to Wave 2 (DR-0012).
+  are key-gated and run out-of-band (not on PRs), so a fork PR never reaches a
+  secret (DR-0012/DR-0015).
 - Local environment files (`.env`, `.env.*`) and the runtime demo artifacts are
   git-ignored. Never commit a real key.
 

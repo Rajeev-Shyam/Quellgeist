@@ -67,6 +67,10 @@ def recent_commits(
     %Y-%m-%dT%H:%M:%SZ format); optional `limit` keeps the N most recent."""
     if since is not None:
         _require_canonical_ts(since)
+    if limit is not None and limit < 0:
+        # Fail loud rather than silently mis-slice: `selected[:-1]` would quietly
+        # DROP the newest commit instead of returning the N most recent.
+        raise ValueError(f"limit must be a non-negative integer, got {limit!r}")
     selected = [c for c in commits if since is None or c.get("ts", "") >= since]
     selected.sort(key=lambda c: c.get("ts", ""), reverse=True)  # newest first
     if limit is not None:

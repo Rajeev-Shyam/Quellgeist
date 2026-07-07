@@ -17,6 +17,22 @@ release. The MCP publish runs after PyPI because the registry verifies package
 ownership by finding the `mcp-name:` markers (in [`README.md`](../README.md)) in
 the **published PyPI README**.
 
+### Supply-chain hardening (security review, DR-0005)
+
+- **Third-party actions are SHA-pinned** across all workflows (not `@v4`/`@v5`/a
+  branch), so a moved tag can't inject code into the OIDC-privileged release jobs.
+  Keep them current with Dependabot (`.github/dependabot.yml`, `package-ecosystem:
+  "github-actions"`) or `pin-github-action`, and update the `# vX.Y.Z` comments
+  when you bump.
+- **`mcp-publisher` is pinned to a version and checksum-verified** before it runs
+  (it holds a live publish token). Bump `MCP_PUBLISHER_VERSION` in `publish-mcp.yml`
+  deliberately; if the release's checksum asset isn't named `checksums.txt`, adjust
+  the verify step (confirm with `--dry-run` first).
+- Every workflow declares a **minimal top-level `permissions:`** (`contents: read`,
+  plus `id-token: write` only in the two publish jobs).
+- The **published sdist excludes `demo/` and `tests/`** so the toy auth never ships
+  in a release artifact.
+
 ## One-time setup (before the first release)
 
 1. **Claim the PyPI package name.** Confirm `quellgeist` is available (or pick a
