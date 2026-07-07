@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # Keep the SHA-pinned GitHub Actions current (security review, DR-0005).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+
+  # Python dependencies (uv.lock / pyproject).
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"

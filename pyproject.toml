@@ -44,6 +44,13 @@ security = ["bandit", "pip-audit"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/quellgeist"]
 
+[tool.hatch.build.targets.sdist]
+# Keep the intentionally-insecure toy demo and the tests out of the PUBLISHED
+# sdist, so it matches the wheel's surface (only the installable package + its
+# metadata ship). The demo's simulated auth (demo/app/auth.py) should never land
+# in a release artifact (security review, DR-0005).
+exclude = ["/demo", "/tests"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"

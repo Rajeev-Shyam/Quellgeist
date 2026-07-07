@@ -57,7 +57,10 @@ def render_postmortem(
 
     lines += ["## Root-cause hypotheses", ""]
     for i, h in enumerate(diagnosis.hypotheses, start=1):
-        lines.append(f"### {i}. {h.cause}  (confidence: {h.confidence:.2f})")
+        # Collapse whitespace so a model-authored cause with a newline can't break
+        # the '###' heading structure.
+        cause = " ".join(h.cause.split())
+        lines.append(f"### {i}. {cause}  (confidence: {h.confidence:.2f})")
         lines.append("")
         lines.append("Evidence:")
         lines += [f"- {_render_evidence(ref)}" for ref in h.evidence]

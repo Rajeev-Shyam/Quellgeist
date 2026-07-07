@@ -32,6 +32,26 @@ from typing import Protocol, runtime_checkable
 
 DEFAULT_MODEL = os.environ.get("QG_MODEL", "gemini/gemini-3.5-flash")
 
+# Keep LiteLLM's provider-level INFO logs, Gemini deprecation warnings, and its
+# internal exception dumps out of our output: the CLI surfaces a single clean
+# error line itself, and a failed keyless call otherwise prints ~80 lines incl. a
+# traceback (violating the "never a traceback" contract). Set as a DEFAULT before
+# litellm is ever imported (it reads LITELLM_LOG at its import), so an explicit
+# LITELLM_LOG from a user debugging still wins.
+os.environ.setdefault("LITELLM_LOG", "CRITICAL")
+
+
+def _quiet_litellm(litellm: object) -> None:
+    """Idempotently silence LiteLLM's chatter (the 'Give Feedback' banner + its
+    loggers). Called once the module is imported inside ``complete``."""
+    import logging
+
+    litellm.suppress_debug_info = True  # type: ignore[attr-defined]
+    for name in ("LiteLLM", "litellm"):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.CRITICAL)
+        logger.propagate = False
+
 
 @dataclass(frozen=True)
 class CallUsage:
@@ -102,6 +122,8 @@ class LiteLLMProvider:
             ServiceUnavailableError,
             Timeout,
         )
+
+        _quiet_litellm(litellm)
 
         if self.min_interval > 0:  # client-side pacing to respect a per-minute cap
             wait = self.min_interval - (time.monotonic() - self._last_call)

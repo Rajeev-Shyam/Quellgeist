@@ -49,6 +49,22 @@ def test_noncanonical_since_raises(bad):
         filter_metric_rows(METRICS, since=bad)
 
 
+def test_recent_commits_limit_keeps_n_most_recent():
+    commits = [
+        {"sha": "old", "ts": "2026-06-18T10:00:00Z"},
+        {"sha": "new", "ts": "2026-06-18T11:00:00Z"},
+    ]
+    assert [c["sha"] for c in recent_commits(commits, limit=1)] == ["new"]
+    assert recent_commits(commits, limit=0) == []
+
+
+@pytest.mark.parametrize("bad", [-1, -2])
+def test_recent_commits_negative_limit_raises(bad):
+    # A negative limit would silently DROP the newest commit (list[:-1]); fail loud.
+    with pytest.raises(ValueError, match="limit must be a non-negative"):
+        recent_commits(COMMITS, limit=bad)
+
+
 def test_metric_name_filter_selects_one_series():
     out = filter_metric_rows(METRICS, name="db_connections_in_use")
     assert [s["metric"] for s in out] == ["db_connections_in_use"]

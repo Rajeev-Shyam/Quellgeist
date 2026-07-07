@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/ci.yml/badge.svg)](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/ci.yml)
 [![security](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/security.yml/badge.svg)](https://github.com/Rajeev-Shyam/Quellgeist/actions/workflows/security.yml)
-[![reliability](https://img.shields.io/badge/reliability-61%2F65%20·%200%20fabricated-brightgreen)](docs/case-studies/wave3-reliability-rate.md)
+[![tuned 4B](https://img.shields.io/badge/tuned%204B-12%2F16%20holdout%20·%200%20fabricated-brightgreen)](docs/case-studies/wave4-qwen-finetune.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -43,7 +43,18 @@ never free text. Two ideas set it apart:
 | **Model-agnostic by construction** | The loop parses JSON actions from plain chat text, so it's identical on Gemini's free tier and a local 4-bit Qwen — no dependence on any backend's native function-calling. Swap models with one config change. (DR-0008, DR-0010) |
 | **Reliability is gated, not asserted** | A keyless, deterministic CI gate (ruff + black + `pytest`, including the fixture-backed eval harness) runs on every push. |
 
-## Quickstart (~30 seconds)
+### What it is / what it's NOT
+
+- **It is:** a first-line *triage* agent — ranked, evidence-cited root-cause
+  hypotheses (or an honest abstention) from read-only logs/deploys/metrics, over a
+  model-agnostic loop that runs on a hosted frontier model **or** a local 4B.
+- **It is NOT:** an autonomous remediator (it never mutates prod — resolution
+  verification is a deferred, cut-first wave); a production-hardened service (the
+  demo is a deliberate toy); or a general-purpose agent. The holdout it's measured
+  on is *out-of-vocabulary but in-structure* — not a claim about unseen incident
+  shapes or real production data.
+
+## Quickstart (~30 seconds to a broken service + structured logs)
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
 
@@ -118,7 +129,8 @@ The servers publish to the **Official MCP Registry** on each tagged release (see
 
 Inject the bad deploy — it drops a marker that flips `verify_token` into a
 NoneType regression and writes a `deploy_log.json` whose offending commit landed
-just before the errors (real `stdout`, paths shown relative to the repo root):
+just before the errors (illustrative `stdout` — the timestamp reflects when you
+run it; paths shown relative to the repo root):
 
 ```text
 $ uv run python -m demo.chaos.bad_deploy
@@ -192,6 +204,15 @@ export QG_MODEL="ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
 uv run quellgeist diagnose --show-trace
 ```
 
+> **Base vs tuned — important.** The `ollama pull` above is the **base** Qwen3-4B:
+> the honest safe *floor* — it scores **0/16 on the holdout and abstains on
+> everything**, never fabricating (DR-0019). The **12/16** headline is the
+> **DR-0020 fine-tune** (`quellgeist-qwen3-dr0020`), which you build + serve via
+> [`finetune/README.md`](finetune/README.md) (a free-Colab QLoRA run →
+> `ollama create`). Until that tuned GGUF is published for a one-line pull, the
+> base model is what a plain `ollama pull` gives you — safe, not yet useful. Use a
+> hosted model (above) or the fine-tune to see live diagnoses.
+
 Heads-up (DR-0012): a Gemini key on an unvalidated, no-billing project returns
 `429 limit: 0` on current models, so the shipped CI gate is deliberately
 **keyless** and model-driven evals are key-gated and run **out-of-band**
@@ -242,15 +263,15 @@ The full decision history lives in the
 | 2 | Reliability core: verifier pass, deterministic fabrication check, abstention, LLM-as-judge | ✅ built — keyless deterministic gate + opt-in verifier/judge; first real run passed with zero fabrication (DR-0016/DR-0017). Judge validation + a reliability *rate* carry into Wave 3 |
 | 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ✅ done — 3 classes across a 65-scenario suite; first full run **61/65, 0 fabricated**; judge validated (kappa 0.81). See the [reliability](docs/case-studies/wave3-reliability-rate.md) + [judge](docs/case-studies/wave3-judge-validation.md) case studies |
 | **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | ✅ **done** — base **0/16 → tuned 12/16** holdout (0 fabricated, 0 speculative-filter, cheaper than base); frontier-competitive vs Gemma-4-31B (beats it 10/16 on capability, ties 6/12 on abstention); `resource_exhaustion` unlearned + adversarial abstention a shared 6/12 ceiling ([case study](docs/case-studies/wave4-qwen-finetune.md), DR-0019/DR-0020) |
-| **5** | Polish & ship: HTML render, security pass, MCP registry, launch | 🚧 **current** |
+| **5** | Polish & ship: HTML render, security pass, MCP registry, launch | 🚧 **engineering complete — release-gated** (HTML render + security scanners + threat model + registry/OIDC scaffolding done; the release tag + launch are the remaining steps) |
 | 6 | Resolution-verification loop | ⏳ cut-first |
 
-Deferred features carry `NotImplementedError` stubs on purpose (e.g.
-`generate_scenarios`) — the wave boundary is deliberate, not unfinished.
+The wave boundary is deliberate, not unfinished: only the current wave is built in
+detail, and later waves are scoped but intentionally unimplemented.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **179 tests** (ruff +
+The deterministic CI gate is the reliability contract: **196 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
 cite-based judge gate, the verifier and advisory LLM-judge, parameterised
@@ -270,8 +291,11 @@ uv run pre-commit run --all-files
 ## Development & contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, conventions, and the
-wave model, and [SECURITY.md](SECURITY.md) for reporting and the no-secrets /
-toy-demo policy.
+wave model; [SECURITY.md](SECURITY.md) for reporting and the no-secrets /
+toy-demo policy; and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community
+expectations. Bug reports and feature requests use the
+[issue templates](.github/ISSUE_TEMPLATE); PRs follow the
+[PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
 ## License
 

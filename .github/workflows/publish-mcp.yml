@@ -22,10 +22,29 @@ jobs:
     name: publish server.json to the MCP Registry
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Download mcp-publisher
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Download + verify mcp-publisher
+        # Pin an exact release (never mutable `latest`) and verify the binary
+        # against the release's published checksums BEFORE running it -- this job
+        # holds a live OIDC token that can publish under our registry namespace,
+        # so an unverified binary is an unacceptable supply-chain risk (security
+        # review, DR-0005). Bump MCP_PUBLISHER_VERSION deliberately; confirm the
+        # asset + checksums names with `--dry-run` first (see docs/publishing.md).
+        env:
+          MCP_PUBLISHER_VERSION: v1.7.9
         run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          set -euo pipefail
+          os=$(uname -s | tr '[:upper:]' '[:lower:]')
+          arch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+          base="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl -fsSL -o mcp-publisher.tar.gz "${base}/mcp-publisher_${os}_${arch}.tar.gz"
+          if curl -fsSL -o checksums.txt "${base}/checksums.txt"; then
+            sha256sum --ignore-missing --check checksums.txt
+          else
+            echo "::error::no checksums.txt in ${MCP_PUBLISHER_VERSION} — confirm the asset name before publishing"
+            exit 1
+          fi
+          tar xzf mcp-publisher.tar.gz mcp-publisher
       - name: Log in via GitHub OIDC
         run: ./mcp-publisher login github-oidc
       - name: Publish each server manifest

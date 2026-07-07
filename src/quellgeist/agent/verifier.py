@@ -91,7 +91,11 @@ def _resolve_evidence(
                 {"handle": f"metric:{ref.id}", "found": row is not None, "row": row}
             )
         else:  # pragma: no cover - the discriminated union has no other type
-            rows.append({"handle": f"{ref.type}:{ref.id}", "found": False, "row": None})
+            # Fail closed WITHOUT assuming a `.id` field: a future evidence type
+            # (e.g. one keyed by `.sha`) must mark the handle missing, not itself
+            # AttributeError inside the fail-closed path.
+            key = getattr(ref, "id", None) or getattr(ref, "sha", "?")
+            rows.append({"handle": f"{ref.type}:{key}", "found": False, "row": None})
     return rows
 
 
