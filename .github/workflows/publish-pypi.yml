@@ -31,4 +31,10 @@ jobs:
       - name: Build sdist + wheel
         run: uv build
       - name: Publish to PyPI (Trusted Publishing)
-        uses: pypa/gh-action-pypi-publish@6733eb7d741f0b11ec6a39b58540dab7590f9b7d # v1.14.0
+        # NOTE: this is a *Docker* action whose image is published to ghcr.io by
+        # version/branch tag, NOT by commit SHA -- so it can't be SHA-pinned (a
+        # SHA ref makes GitHub pull a nonexistent `:<sha>` image -> "manifest
+        # unknown"). Pin to the pypa-maintained release branch, as their trusted-
+        # publishing docs prescribe; PyPI Trusted Publishing (OIDC) is the actual
+        # trust anchor here, not the action ref.
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -23,11 +23,17 @@ the **published PyPI README**.
   branch), so a moved tag can't inject code into the OIDC-privileged release jobs.
   Keep them current with Dependabot (`.github/dependabot.yml`, `package-ecosystem:
   "github-actions"`) or `pin-github-action`, and update the `# vX.Y.Z` comments
-  when you bump.
-- **`mcp-publisher` is pinned to a version and checksum-verified** before it runs
-  (it holds a live publish token). Bump `MCP_PUBLISHER_VERSION` in `publish-mcp.yml`
-  deliberately; if the release's checksum asset isn't named `checksums.txt`, adjust
-  the verify step (confirm with `--dry-run` first).
+  when you bump. **Exception:** `pypa/gh-action-pypi-publish` is a Docker action
+  whose image is tagged by version/branch, not commit SHA, so it *cannot* be
+  SHA-pinned (a SHA ref → nonexistent `:<sha>` image) — it's pinned to the
+  pypa-maintained `release/v1` branch, with PyPI Trusted Publishing (OIDC) as the
+  real trust anchor.
+- **`mcp-publisher` is pinned to an exact version** (`MCP_PUBLISHER_VERSION` in
+  `publish-mcp.yml`) and downloaded over TLS from the official
+  `modelcontextprotocol/registry` release — the pinned version + authenticated
+  HTTPS source is the baseline. (That release publishes no standard-named
+  checksums asset, so we match the project's own documented install rather than
+  fail on a guessed name.) Bump the version deliberately.
 - Every workflow declares a **minimal top-level `permissions:`** (`contents: read`,
   plus `id-token: write` only in the two publish jobs).
 - The **published sdist excludes `demo/` and `tests/`** so the toy auth never ships
