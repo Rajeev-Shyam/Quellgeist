@@ -58,10 +58,7 @@ _SYSTEM = (
 
 
 def _gold_block(scenario: Scenario) -> str:
-    gold_refs = [
-        {"type": r.type, "id": (r.sha if r.type == "commit" else r.id)}
-        for r in scenario.gold_evidence_refs
-    ]
+    gold_refs = [{"type": r.type, "id": r.ref_id} for r in scenario.gold_evidence_refs]
     return json.dumps(
         {"gold_cause": scenario.gold_cause, "gold_evidence": gold_refs}, default=str
     )

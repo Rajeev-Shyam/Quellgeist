@@ -140,6 +140,30 @@ def test_provider_failure_exits_nonzero(monkeypatch, capsys):
     assert "diagnosis failed" in err
 
 
+def test_demo_is_keyless_and_never_calls_a_provider(monkeypatch, capsys):
+    # If --demo touched the model, this provider factory would blow up.
+    def _boom(model):
+        raise AssertionError("--demo must not build a provider")
+
+    monkeypatch.setattr(cli, "_make_provider", _boom)
+    rc = cli.main(["diagnose", "--demo"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "rendered from gold" in out  # labelled, not passed off as live output
+    assert "log #2" in out and "commit a1b2c3d" in out
+
+
+def test_demo_writes_html_keyless(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(
+        cli, "_make_provider", lambda m: (_ for _ in ()).throw(AssertionError())
+    )
+    out_file = tmp_path / "demo.html"
+    rc = cli.main(["diagnose", "--demo", "--out", str(out_file)])
+    assert rc == 0
+    assert out_file.read_text(encoding="utf-8").startswith("<!doctype html>")
+    assert "a1b2c3d" in out_file.read_text(encoding="utf-8")
+
+
 def test_format_without_out_is_rejected(capsys):
     rc = cli.main(
         ["diagnose", "--format", "html"]

@@ -20,13 +20,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from quellgeist.agent.schema import Diagnosis, EvidenceRef
+from quellgeist.agent.schema import Diagnosis
 
 Handle = tuple[str, Any]
-
-
-def _handle_key(ref: EvidenceRef) -> Handle:
-    return ("commit", ref.sha) if ref.type == "commit" else (ref.type, ref.id)
 
 
 def real_signal_handles(
@@ -53,7 +49,7 @@ def real_signal_handles(
 def cited_handles(diagnosis: Diagnosis) -> set[Handle]:
     """The set of handles cited across all hypotheses. An abstained diagnosis
     has no hypotheses, so it cites nothing."""
-    return {_handle_key(ref) for h in diagnosis.hypotheses for ref in h.evidence}
+    return {ref.key for h in diagnosis.hypotheses for ref in h.evidence}
 
 
 @dataclass(frozen=True)
