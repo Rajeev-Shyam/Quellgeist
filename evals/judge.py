@@ -25,10 +25,6 @@ class JudgeResult:
     reason: str
 
 
-def _handle_key(ref) -> tuple[str, object]:
-    return (ref.type, ref.sha if ref.type == "commit" else ref.id)
-
-
 def judge(diagnosis: Diagnosis, scenario: Scenario) -> JudgeResult:
     if diagnosis.abstained:
         return JudgeResult(False, False, False, "diagnosis abstained")
@@ -42,8 +38,8 @@ def judge(diagnosis: Diagnosis, scenario: Scenario) -> JudgeResult:
     top_commit_shas = {e.sha for e in top.evidence if e.type == "commit"}
     correct_cause = bool(gold_shas) and gold_shas <= top_commit_shas
 
-    cited = {_handle_key(e) for h in diagnosis.hypotheses for e in h.evidence}
-    gold = {_handle_key(r) for r in scenario.gold_evidence_refs}
+    cited = {e.key for h in diagnosis.hypotheses for e in h.evidence}
+    gold = {r.key for r in scenario.gold_evidence_refs}
     evidence_matches = gold <= cited
 
     passed = correct_cause and evidence_matches

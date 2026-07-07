@@ -58,12 +58,7 @@ class LoopResult:
     messages: list[dict[str, str]] = field(default_factory=list)
 
     def cited_handles(self) -> set[tuple[str, Any]]:
-        cited: set[tuple[str, Any]] = set()
-        for h in self.diagnosis.hypotheses:
-            for ref in h.evidence:
-                key = ref.sha if ref.type == "commit" else ref.id
-                cited.add((ref.type, key))
-        return cited
+        return {ref.key for h in self.diagnosis.hypotheses for ref in h.evidence}
 
     def cited_but_unseen_handles(self) -> set[tuple[str, Any]]:
         """Wave-1 early-read measurement (DR-0009): handles the model cited that

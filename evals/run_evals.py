@@ -41,6 +41,11 @@ from quellgeist.servers.filters import (
     filter_metric_rows,
     recent_commits,
 )
+from quellgeist.servers.tools import (
+    GET_RECENT_COMMITS_DESC,
+    QUERY_LOGS_DESC,
+    QUERY_METRICS_DESC,
+)
 
 FIXTURES = Path(__file__).parent / "scenarios" / "fixtures"
 
@@ -59,23 +64,9 @@ def scenario_tools(scenario: Scenario) -> list[ToolSpec]:
         return filter_metric_rows(scenario.metrics, name, since)
 
     return [
-        ToolSpec(
-            "query_logs",
-            "Query structured incident logs; optional since/level/route; rows carry a stable int id.",
-            query_logs,
-        ),
-        ToolSpec(
-            "get_recent_commits",
-            "List recent deploys newest-first; optional since/limit; commits carry sha/ts/msg/files.",
-            get_recent_commits,
-        ),
-        ToolSpec(
-            "query_metrics",
-            "Query metric time-series (memory/connections/queue depth) for resource "
-            "incidents; optional name/since; each series carries a `metric` name "
-            "(cite it), `unit`, and `points`.",
-            query_metrics,
-        ),
+        ToolSpec("query_logs", QUERY_LOGS_DESC, query_logs),
+        ToolSpec("get_recent_commits", GET_RECENT_COMMITS_DESC, get_recent_commits),
+        ToolSpec("query_metrics", QUERY_METRICS_DESC, query_metrics),
     ]
 
 

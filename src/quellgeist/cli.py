@@ -24,12 +24,19 @@ from quellgeist.agent.providers import (
     is_auth_error,
     is_provider_unavailable,
 )
+from quellgeist.demo_incident import demo_diagnosis
 from quellgeist.output.postmortem import render_postmortem, write_postmortem
-from quellgeist.servers.commits_mcp import get_recent_commits
-from quellgeist.servers.logs_mcp import query_logs
-from quellgeist.servers.metrics_mcp import query_metrics
+from quellgeist.servers.tools import (
+    GET_RECENT_COMMITS_DESC,
+    QUERY_LOGS_DESC,
+    QUERY_METRICS_DESC,
+    get_recent_commits,
+    query_logs,
+    query_metrics,
+)
 
 _TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
+_DEFAULT_TITLE = "Incident Postmortem"
 
 
 def _make_provider(model: str | None) -> Provider:
@@ -37,26 +44,13 @@ def _make_provider(model: str | None) -> Provider:
 
 
 def _make_tools() -> list[ToolSpec]:
+    # Descriptions come from the single canonical source (servers.tools) -- the
+    # exact text the eval harness and the fine-tune use, so the CLI's in-process
+    # run matches what was measured (no train/serve prompt skew).
     return [
-        ToolSpec(
-            "query_logs",
-            "Query structured incident logs; optional since/level/route filters; "
-            "returns rows each with a stable integer id.",
-            query_logs,
-        ),
-        ToolSpec(
-            "get_recent_commits",
-            "List recent deploys newest-first; optional since/limit; returns "
-            "commits with sha, ts, msg, files.",
-            get_recent_commits,
-        ),
-        ToolSpec(
-            "query_metrics",
-            "Query metric time-series (memory/connections/queue depth) for "
-            "resource incidents; optional name/since; each series carries a "
-            "`metric` name (cite it), `unit`, and `points`.",
-            query_metrics,
-        ),
+        ToolSpec("query_logs", QUERY_LOGS_DESC, query_logs),
+        ToolSpec("get_recent_commits", GET_RECENT_COMMITS_DESC, get_recent_commits),
+        ToolSpec("query_metrics", QUERY_METRICS_DESC, query_metrics),
     ]
 
 
@@ -89,6 +83,20 @@ def _error_hint(exc: BaseException) -> str:
     return ""
 
 
+def _emit(diagnosis, args: argparse.Namespace, title: str) -> int:
+    """Render the postmortem to stdout and, if --out, to a file. Shared by the
+    live and --demo paths so the two can't drift."""
+    print(render_postmortem(diagnosis, title=title))
+    if args.out:
+        try:
+            write_postmortem(diagnosis, args.out, title=title, fmt=args.format)
+        except OSError as e:  # unwritable path -> clean error, not a traceback
+            print(f"error: could not write --out {args.out}: {e}", file=sys.stderr)
+            return 1
+        print(f"wrote postmortem to {args.out}", file=sys.stderr)
+    return 0
+
+
 def _diagnose(args: argparse.Namespace) -> int:
     if args.format and not args.out:
         # stdout is always Markdown (a clean, pipeable artifact); --format only
@@ -99,6 +107,14 @@ def _diagnose(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
+
+    if args.demo:
+        # Keyless: render the demo incident's gold diagnosis, no model needed --
+        # so a clean clone shows a real-shaped postmortem on the first run.
+        title = args.title
+        if title == _DEFAULT_TITLE:
+            title = "Incident Postmortem (demo — rendered from gold)"
+        return _emit(demo_diagnosis(), args, title)
 
     provider = _make_provider(args.model)
     tools = _make_tools()
@@ -114,18 +130,8 @@ def _diagnose(args: argparse.Namespace) -> int:
             print(f"hint: {hint}", file=sys.stderr)
         return 1
 
-    print(render_postmortem(result.diagnosis, title=args.title))
-
-    if args.out:
-        try:
-            write_postmortem(
-                result.diagnosis, args.out, title=args.title, fmt=args.format
-            )
-        except OSError as e:  # unwritable path -> clean error, not a traceback
-            print(f"error: could not write --out {args.out}: {e}", file=sys.stderr)
-            return 1
-        print(f"wrote postmortem to {args.out}", file=sys.stderr)
-    if args.show_trace:
+    rc = _emit(result.diagnosis, args, args.title)
+    if rc == 0 and args.show_trace:
         print(
             f"[trace] steps={result.steps} "
             f"tool_calls={[name for name, _ in result.tool_calls]} "
@@ -133,7 +139,7 @@ def _diagnose(args: argparse.Namespace) -> int:
             f"cited_but_unseen={result.cited_but_unseen_handles() or '∅'}",
             file=sys.stderr,
         )
-    return 0
+    return rc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -145,6 +151,12 @@ def main(argv: list[str] | None = None) -> int:
 
     d = sub.add_parser(
         "diagnose", help="diagnose the current incident from logs + recent deploys"
+    )
+    d.add_argument(
+        "--demo",
+        action="store_true",
+        help="render the demo incident's gold diagnosis with NO model or key "
+        "(keyless; a real-shaped postmortem on a clean clone)",
     )
     d.add_argument(
         "--out",
@@ -163,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument(
         "--max-steps", type=int, default=8, help="max agent loop steps (default: 8)"
     )
-    d.add_argument("--title", default="Incident Postmortem", help="postmortem title")
+    d.add_argument("--title", default=_DEFAULT_TITLE, help="postmortem title")
     d.add_argument(
         "--show-trace",
         action="store_true",

@@ -13,7 +13,21 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, model_validator
 
 
-class LogRef(BaseModel):
+class _EvidenceRefKey:
+    """Canonical handle accessors for every evidence type, so the ~a-half-dozen
+    call sites that used to re-derive ``(type, sha-or-id)`` by hand share one
+    definition. These are PROPERTIES, not pydantic fields, so they do not change
+    the model's JSON schema or serialization (the fine-tune's prompt is unchanged).
+    Each concrete type provides ``type`` (the discriminator) and ``ref_id`` (the
+    checked value); ``key`` is the membership handle both the loop and the
+    deterministic fabrication check look up."""
+
+    @property
+    def key(self) -> tuple[str, int | str]:
+        return (self.type, self.ref_id)  # type: ignore[attr-defined]
+
+
+class LogRef(_EvidenceRefKey, BaseModel):
     """Reference to one structured-log row by its source-stable id."""
 
     type: Literal["log"] = "log"
@@ -22,21 +36,33 @@ class LogRef(BaseModel):
         ""  # display-only human gloss                                         (NOT checked)
     )
 
+    @property
+    def ref_id(self) -> int:
+        return self.id
 
-class CommitRef(BaseModel):
+
+class CommitRef(_EvidenceRefKey, BaseModel):
     """Reference to a git commit by SHA."""
 
     type: Literal["commit"] = "commit"
     sha: str  # (checked)
     note: str = ""  # display-only  (NOT checked)
 
+    @property
+    def ref_id(self) -> str:
+        return self.sha
 
-class MetricRef(BaseModel):
+
+class MetricRef(_EvidenceRefKey, BaseModel):
     """Reference to a metric series. Emitted from Wave 3 onward."""
 
     type: Literal["metric"] = "metric"
     id: str  # (checked once the Wave 3 fabrication check handles it)
     note: str = ""
+
+    @property
+    def ref_id(self) -> str:
+        return self.id
 
 
 EvidenceRef = Annotated[

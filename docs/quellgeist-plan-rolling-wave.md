@@ -337,6 +337,16 @@ and outside code**: claim the PyPI name + register the trusted publisher, cut a
 `v0.1.0` tag (fires the OIDC publish workflows), claim the ecosystem listings, make
 the repo public, and post the launch. v1 is one release tag away.
 
+**Post-review hardening (2026-07-07):** a six-lens review (dev/architect/perf/
+security/QA/PM) found no blocker bugs. Fixes landed: robustness (JSON parser,
+verifier fail-closed, negative-limit, CLI clean errors + a keyless run silenced
+from 86 lines to 2), a docs-honesty sweep (badge/test-count/CONTRIBUTING/model
+reachability), supply-chain hardening (SHA-pinned actions, checksum-verified
+`mcp-publisher`, workflow `permissions`, scoped sdist), GitHub scaffolding, and the
+three high-value refactors: a FastMCP-free single-sourced tool contract (CLI import
+627→172 ms, closes the train/serve description skew), a canonical evidence-handle
+accessor, and a keyless `quellgeist diagnose --demo`. 179 → 198 tests.
+
 **Backlog carried in from Wave 4 (do NOT block the launch on these):** (a) a
 fully-logged 3-pass frontier column — Wave 4's `gemma-4-31b` numbers are
 directional; re-run both frontier cells off-GPU (API-only) to promote them and

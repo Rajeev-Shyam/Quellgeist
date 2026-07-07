@@ -58,23 +58,29 @@ never free text. Two ideas set it apart:
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
 
-```bash
-uv sync                                   # 1. install deps into a venv
+**See a real-shaped diagnosis in one keyless command** (no model, no API key):
 
-uv run uvicorn demo.app.main:app          # 2. start the toy service (leave running)
+```bash
+uv sync && uv run quellgeist diagnose --demo     # renders the demo incident's cited postmortem
+```
+
+Then run the full loop against the live toy service:
+
+```bash
+uv run uvicorn demo.app.main:app          # 1. start the toy service (leave running)
 
 # --- in a second shell, from the repo root ---
-uv run python -m demo.chaos.bad_deploy    # 3. inject a simulated bad deploy
-curl -s localhost:8000/login              # 4. trip /login -> 500s + structured error logs
-uv run quellgeist diagnose --show-trace   # 5. diagnose (needs a model; see below)
+uv run python -m demo.chaos.bad_deploy    # 2. inject a simulated bad deploy
+curl -s localhost:8000/login              # 3. trip /login -> 500s + structured error logs
+uv run quellgeist diagnose --show-trace   # 4. diagnose live (needs a model; see below)
 
 uv run python -m demo.chaos.reset         # back to a green slate
 ```
 
-Step 5 needs a reasoner — see [Running the model](#running-the-model). Without a
-key, `quellgeist diagnose` degrades to a one-line error and exit 1 (never a
-traceback); the [example session](#example-session) below shows the output shape
-rendered deterministically from a fixture.
+The live step needs a reasoner — see [Running the model](#running-the-model).
+Without a key, `quellgeist diagnose` exits 1 with a one-line error + hint (never a
+traceback); `--demo` always works keyless and renders the same output shape
+deterministically from gold.
 
 ## Architecture
 
