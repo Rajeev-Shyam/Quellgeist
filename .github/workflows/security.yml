@@ -1,0 +1,41 @@
+name: security
+
+# Static + dependency security scan of the published package (Wave 5, DR-0005):
+# bandit (Python static analysis of src/) + pip-audit (known-CVE scan of the
+# locked dependency tree). Keyless, so it runs on fork PRs.
+#
+# Deliberately its OWN workflow, NOT a step in ci.yml. ci.yml is the deterministic
+# MERGE gate (lint + tests); this reports the security POSTURE. Keeping them apart
+# means a newly-published advisory (pip-audit can go red on any transitive dep,
+# through no fault of the PR) never blocks an unrelated merge -- treat a red here
+# as "bump a dependency", handled on its own, not as a broken build. Leave this
+# check out of required-status branch protection for that reason.
+#
+# The MCP-server-specific scan (mcp-scan) needs a live server and is a manual
+# pre-release step -- see SECURITY.md, not this workflow.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  scan:
+    name: bandit + pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies (with the security group)
+        run: uv sync --group security
+      - name: bandit -- static analysis of the shipped package
+        # The one B311 hit (retry-backoff jitter, not crypto) is annotated
+        # `# nosec B311` at its call site, so a clean run is exit 0.
+        run: uv run bandit -q -r src/
+      - name: pip-audit -- known-vulnerability scan of the locked deps
+        # --skip-editable drops the local `quellgeist` dist (not on PyPI, nothing
+        # to audit). Red here = a dependency needs bumping (see the note above).
+        run: uv run pip-audit --skip-editable

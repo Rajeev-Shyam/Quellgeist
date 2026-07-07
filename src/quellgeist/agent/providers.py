@@ -138,8 +138,9 @@ class LiteLLMProvider:
                 if attempt == self.max_retries - 1:
                     raise  # exhausted: surface the real provider error + traceback
                 # full jitter over [delay, 2*delay): decorrelates concurrent
-                # scenarios' retries so they don't stampede the provider in sync.
-                time.sleep(delay + random.uniform(0.0, delay))
+                # scenarios' retries so they don't stampede the provider in sync
+                # (random here is backoff jitter, not a security/crypto use).
+                time.sleep(delay + random.uniform(0.0, delay))  # nosec B311
                 delay *= 2  # exponential backoff
         raise RuntimeError("unreachable: retry loop exited without return or raise")
 
