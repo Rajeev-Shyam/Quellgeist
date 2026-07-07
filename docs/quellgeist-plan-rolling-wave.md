@@ -256,24 +256,24 @@ CI-shaped and high-confidence) → HTML postmortem render (self-contained, demoa
 (architecture doc + polish) run alongside; much is already done.
 
 ### Task 1: Security pass on the published MCP servers *(do first — publish prerequisite)*
-- [ ] Wire static/dependency scanners into CI as their **own** job (keep the
-      deterministic lint+test gate clean and fast; don't couple a scanner flake to
-      the merge gate). `bandit` over `src/` (the demo's intentional toy-auth is
-      `# nosec`-annotated with a comment pointing at `SECURITY.md`), `pip-audit`
-      over the locked deps. Start non-gating (reporting) if a first run surfaces
-      noise, then promote to gating once clean — mirror `eval.yml`'s out-of-band
-      precedent, but the scanners are keyless so they *can* gate on PRs once green.
-- [ ] Consider `semgrep` (Python + a light MCP ruleset) — add only if it earns its
-      keep over bandit; don't stack redundant tools.
+- [x] **Scanners wired into CI** as their own `security` workflow (kept off the
+      deterministic merge gate so a new advisory never blocks an unrelated merge):
+      `bandit -r src/` (the one B311 hit — retry-backoff jitter, not crypto —
+      annotated `# nosec B311` at its call site) and `pip-audit --skip-editable`
+      (bumped `pydantic-settings` 2.14.1→2.14.2 to clear GHSA-4xgf-cpjx-pc3j). Both
+      keyless and green; pinned via a `security` dependency group.
+- [~] `semgrep` — **skipped for now**: bandit + pip-audit cover the static + CVE
+      surface on this small read-only codebase; revisit only if a gap appears (don't
+      stack redundant tools).
 - [ ] Run an **MCP-specific scanner** (`mcp-scan` / Cisco `mcp-scanner`) against the
-      three servers (`query_logs`, `get_recent_commits`, `query_metrics`) — tool-
-      poisoning / prompt-injection / over-broad-scope checks. Capture the clean
-      report; this is a launch talking-point, not necessarily a CI step (it needs a
-      running server).
-- [ ] Expand `SECURITY.md` with a **threat-model section** (DR-0005): input
-      validation, no SSRF (tools read local files only, never the network), scoped
-      access (env-configured paths), least privilege (read-only — no write/execute).
-      One honest paragraph per property, grounded in the actual code.
+      three servers live — **documented as a pre-release step in `SECURITY.md`** (it
+      needs a running server, so it is not a CI step); run it and keep the clean
+      report at publish time (Task 4).
+- [x] **`SECURITY.md` threat-model section** added (DR-0005): least privilege
+      (read-only, no state mutation), scoped access (one operator-configured file per
+      server; tool args never choose the path → no traversal), no SSRF (no network
+      client anywhere in `servers/`), and input validation (`since` canonicalised; no
+      SQL/shell/template injection surface) — each grounded in the actual code.
 - **Acceptance:** scanner job green (or a documented, justified allowlist);
   MCP-scanner report clean; `SECURITY.md` threat model merged; DR-0005 closed.
 
