@@ -70,7 +70,7 @@ def _diagnose(args: argparse.Namespace) -> int:
     print(render_postmortem(result.diagnosis, title=args.title))
 
     if args.out:
-        write_postmortem(result.diagnosis, args.out, title=args.title)
+        write_postmortem(result.diagnosis, args.out, title=args.title, fmt=args.format)
         print(f"wrote postmortem to {args.out}", file=sys.stderr)
     if args.show_trace:
         print(
@@ -94,7 +94,14 @@ def main(argv: list[str] | None = None) -> int:
         "diagnose", help="diagnose the current incident from logs + recent deploys"
     )
     d.add_argument(
-        "--out", help="also write the postmortem to this file (e.g. postmortem.md)"
+        "--out",
+        help="also write the postmortem to this file (e.g. postmortem.md or .html)",
+    )
+    d.add_argument(
+        "--format",
+        choices=["md", "html"],
+        default=None,
+        help="format for --out (default: infer from the extension, else markdown)",
     )
     d.add_argument(
         "--model",

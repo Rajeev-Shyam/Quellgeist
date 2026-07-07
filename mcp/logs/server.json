@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.Rajeev-Shyam/quellgeist-logs",
+  "description": "Read-only MCP server exposing query_logs over a structured JSONL incident log. Part of Quellgeist first-line incident triage.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/Rajeev-Shyam/Quellgeist",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "quellgeist",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "runtimeArguments": [
+        { "type": "named", "name": "--from", "value": "quellgeist" },
+        { "type": "positional", "value": "quellgeist-logs-mcp" }
+      ],
+      "environmentVariables": [
+        {
+          "name": "QG_LOG_PATH",
+          "description": "Path to the JSONL incident log to read (default: demo/incident_logs.jsonl, resolved against the working directory).",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
