@@ -385,10 +385,41 @@ observation cap (a 5k-line log → ~277k tokens in one turn); rigid `…Z`-only 
 Training decisions (DR-0021 corpus revision; resource_exhaustion trajectory-mix) remain
 unopened — this increment is deliberately not a training change.
 
-## Wave 6 — Resolution-verification Loop *(deferred / cut-first)*
+## v2 (Wave 7+) — Live incident-response service + generalisation track *(scoped 2026-07-09; DR-0023)*
+
+**Program decision:** [DR-0023](quellgeist-adr-log.md). **Design spec:**
+[`quellgeist-v2-spec.md`](quellgeist-v2-spec.md). **Execution brief (how):**
+[`quellgeist-v2-session-brief.md`](quellgeist-v2-session-brief.md).
+
+v2 wraps the proven v1 core in a **live, concurrent, observable incident-response
+service** (signed webhook → worker pool runs the *unchanged* `run_loop` → persisted
+run + cost → HITL review gate → Slack + HTML → sandbox resolution re-check), plus a
+parallel reliability track (timing-aware verifier; out-of-structure generalisation
+eval). **Two additive tracks, not a rewrite — the frozen DR-0020 measurement surface
+is never touched** (enforced by `tests/frozen/test_frozen_surface.py`, landed in the
+setup session). All v2 code lives in new modules: `service/`, `orchestrator/`,
+`store/`, `observability/`, `notify/`, and new eval dirs.
+
+Rolling-wave discipline: only the current wave is detailed to task level. Each wave's
+DR (DR-0024…DR-0027) opens at kickoff via the **writing-plans** flow; the boundary
+checklist runs at its close.
+
+| Wave | Scope | Status |
+|---|---|---|
+| **7** | Service spine: `store` (SQLite WAL) + `observability` + `service` (signed webhook, healthz) + worker pool + isolated snapshots + run persistence + the frozen-surface guard | ⏳ next — detailed at kickoff |
+| 8 | Output + HITL: `notify` (Slack + HTML), review gate (approve/steer/reject), hint-at-trigger | ⏳ scoped |
+| 9 | Resolution-verification (Wave-6 content, sandbox only) + Dockerfile + `compose.yml` + SECURITY.md | ⏳ scoped |
+| 10 | Track B (parallel): timing-aware verifier (DR-0024) + structure-varied/out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026) | ⏳ scoped |
+
+**Setup landed this session (pre-Wave-7):** the three v2 docs (DR-0023, spec, brief),
+this plan section, `tests/frozen/test_frozen_surface.py` (the anti-drift guard — golden
+tool-string hash + schema field order + observation/retry format), `.env.example`, and
+new-module scaffolds. No wave logic built yet — Wave 7 opens with a `writing-plans` plan.
+
+## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 
 **Objective:** after a controlled fix is applied in the sandbox, the agent re-reads signals and confirms recovery. No autonomous prod mutation.
-**Note:** only attempt if Waves 1–5 are solid and time remains. Pure upside, fully expendable.
+**Status:** no longer cut-first — **in scope for v2 as Wave 9** (`orchestrator.verify_resolution`, sandbox-only). Original note preserved: pure upside; the DR-0001 no-prod-mutation boundary holds.
 
 ---
 

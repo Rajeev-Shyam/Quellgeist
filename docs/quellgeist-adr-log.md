@@ -528,3 +528,187 @@ Loosening `filters.py`'s `since` strictness or adding the cap there (rejected: `
 
 ## Consequence
 An operator can point Quellgeist at their own incident (`quellgeist ingest` → `diagnose`) instead of hand-authoring the schema, on messy real data that previously crashed it, without a context blowup, and with the cite-or-abstain guarantee enforced at the point of use — while every frozen surface (tool descriptions, evidence schema, corpora, observation format, `filters`) is untouched and all prior tests stay byte-identical. Deferred, non-blocking: a streaming reader for very large logs; ingest adapters for more sources (journald, Datadog, OTLP) as real users ask; wiring the live citation check as an optional verifier step in-loop. DR-0021 (structure-varied corpus revision) and the resource_exhaustion trajectory-mix remain the unopened training decisions — this DR is deliberately not a training change.
+
+---
+
+# DR-0023 — Quellgeist v2: live incident-response service + generalization track (extends DR-0001, DR-0006, DR-0009; opens Wave 7+)
+
+**Status:** Accepted (program-level; sub-decisions provisional) · **Date:** 2026-07-09 · **Revisit at:** the Wave 7 boundary review, and again when the first real webhook fires against a real incident
+
+> This DR sets the **shape** of v2 and the load-bearing decisions needed *now*.
+> Per the rolling-wave discipline, later decisions are named here but opened in
+> full at their wave start (see *Deferred DRs* at the end). It follows the
+> DR-0020 pattern of numbered sub-decisions under one record. Companion docs:
+> [v2 spec](quellgeist-v2-spec.md) · [v2 session brief](quellgeist-v2-session-brief.md).
+
+## Context
+
+v1 (through DR-0022) is engineered to a high bar *inside* the loop — layered
+reliability, a keyless deterministic fabrication check now enforced at real-use
+time, a model-agnostic JSON-action loop, real-data ingestion, 200+ tests — but it
+is, by construction, a **stateless, single-incident, synchronous CLI**. Every
+`quellgeist diagnose` is a one-shot blocking invocation against local files, with
+no run history, no live trigger surface, no self-telemetry beyond an in-memory
+`CallUsage` list on the provider, and no deployment artifact beyond `uv run`. The
+three tools are *published* as MCP servers but the agent reuses their functions
+in-process; the stdio MCP-*client* wire path is roadmap-only (DR-0010).
+
+Two reliability limits are honestly documented and carry forward: (1) the fine-tune
+holdout is **out-of-vocabulary but in-structure** — both corpora share one
+structural skeleton, and a vocabulary-blind positional policy passes the
+deterministic judge 81/81 (DR-0020 decision 1), so the generalisation claim is
+bounded; (2) **adversarial-abstention recall is a shared 6/12 ceiling** with a 31B
+frontier, and the tuned model's *intrinsic* abstention collapsed to 0/12 (the
+verifier is load-bearing) — with `resource_exhaustion` not transferring at all
+(0/N) (Wave 4 boundary review; DR-0020).
+
+The scoping session (30-question MCQ, 2026-07-09) set the v2 intent: make it a
+**live, concurrent, observable incident-response service** that a reviewer can run
+end-to-end in ~3 minutes (the ops/observability interview gap), *and* strengthen
+the reliability story (timing-aware verifier; genuine out-of-structure
+generalisation), on the same Wave-4 hardware, without breaking the fine-tune's
+0/16→12/16 comparability.
+
+The hard constraint is unchanged from DR-0022 and is the #1 drift risk for all v2
+work: the **frozen DR-0020 measurement surface** — the tool description strings
+(`servers/tools.py`), the evidence-handle schema and field order (`agent/schema.py`),
+the committed corpora (`evals/scenarios/fixtures/` + `.../holdout/`), the loop's
+observation/retry string format (`agent/loop.py`), and `servers/filters.py` — must
+stay byte-identical, or the headline comparison is invalidated.
+
+## Decision
+
+**v2 is two additive tracks over the v1 core, not a rewrite. Nothing in this DR
+modifies the frozen measurement surface; every new capability is a new module or a
+new, separately-pinned eval axis.**
+
+**1. Track A — Live incident-response service (primary).** A new
+`quellgeist.service` (async FastAPI) exposes a **signed inbound webhook** as the
+trigger; accepted incidents are enqueued and processed by a **worker pool** that
+runs the existing **synchronous `run_loop` unchanged**, in a thread executor. The
+loop is the measured artifact and is not made async or interruptible. Concurrency
+lives in the service/worker layer, not the loop (satisfies "must handle concurrent"
+without touching the frozen path).
+
+**2. Persistence = SQLite (WAL).** Chosen for the "No preference" answer: zero-infra,
+matches the RTX-5060 laptop constraint, and WAL gives concurrent readers alongside a
+single writer — sufficient at portfolio/demo concurrency. A new `quellgeist.store`
+owns the schema (`incidents`, `runs`, `diagnoses`, `evidence`, `events` audit log),
+a thin DAO, and forward-only migrations. Postgres is explicitly deferred (revisit
+only if multi-node).
+
+**3. Self-observability is a v2 requirement (Q15).** A new `quellgeist.observability`
+threads a **per-incident correlation id + per-run id** through the run via a
+lightweight context, configures `structlog` (already a dependency; today only used in
+`demo/` and `ingest/`) for the agent process, and **persists every run's full trace,
+`CallUsage` token/latency records, and outcome** to the store. No live metrics
+dashboard is built — the offline comparison matrix remains the analytics surface
+(Q16); the HTML page + the run store are the operator-facing views.
+
+**4. Dual output (Q5).** Both a **Slack** post and a **self-contained HTML page**.
+HTML reuses `output/postmortem.py::render_postmortem_html` verbatim; Slack is a new
+`quellgeist.notify` emitter. Posting is idempotent per incident.
+
+**5. Human-in-the-loop is in scope (Q27), via a wrapper — never the measured loop.**
+A new `quellgeist.orchestrator` provides a **resumable investigation** around
+`run_loop` supporting (a) an operator **hint** attached at trigger time or injected
+between loop steps, and (b) a **pre-post review gate**: a completed diagnosis enters
+`pending_review`, and an operator on the HTML page may **approve / steer / reject**
+before it is posted. The measured `run_loop` stays non-interactive and byte-identical;
+HITL is orchestration around it.
+
+**6. Wave 6 (resolution-verification) is pulled into v2 (Q3).** After a controlled fix
+is applied **in the sandbox demo only**, the orchestrator re-reads signals and confirms
+recovery, appending a resolution verdict to the run. **No autonomous production
+mutation** — the DR-0001 boundary holds.
+
+**7. Timing-aware verifier (Q9).** A new verifier *variant* targets the shared 6/12
+adversarial-abstention ceiling — specifically the culprit-shifted-*after*-the-errors
+class the current support-only verifier misses. It is additive, **pinned separately**
+(never the `QG_MODEL` fallback; the tuned model must not verify itself — DR-0016
+discipline), and measured against the **frozen holdout** plus new abstention probes.
+
+**8. Structural generalisation (Q28) with a public-postmortem out-of-structure holdout
+(Q29).** Build an **additive** structure-varied corpus (varying the skeleton the two
+current corpora share: commit count, culprit position, decoy shape, error-route
+cardinality, log length) *and* a small **out-of-structure holdout curated from public
+outage writeups** — structure and incident shape only, **paraphrased/curated with
+attribution, never reproduced verbatim** (copyright), normalised through the existing
+`ingest` layer. The frozen holdout remains the comparison anchor; any new fine-tune is
+reported against **both** the frozen holdout (for 0/16→12/16 comparability) and the new
+out-of-structure holdout (for the generalisation claim).
+
+**9. `resource_exhaustion` transfer gap — optional targeted training (Q10 no-pref;
+GPU budget available, Q11).** A targeted `resource_exhaustion` trajectory-mix is scoped
+as an **optional** stretch (its own DR at wave start), not a v2 blocker; the timing-aware
+verifier's forced abstention is the interim safety on that class. Model stays
+**Qwen3-4B** (no 8B retest, Q12).
+
+**10. Deployment (Q8).** Ship a **Dockerfile** for the service (+ a local `compose` for
+the demo service, the agent service, and Ollama). The repo is and stays **public** (Q21),
+so all secrets — Slack token, webhook signing secret, provider keys — are **env-only,
+never committed**; a webhook signing-secret check is mandatory.
+
+**11. Scope guards (from the MCQ).** No new evidence type in v2 (Q13 no-pref; if one is
+ever added it is **verifier-checked only, no retrain** — Q14). The MCP-client wire path
+stays **nice-to-have / deferred** (Q25). **Async only in the new service layer** (the
+core stays sync; Q26 no-pref, resolved by the wrapper design).
+
+**12. Git & release (Q20, Q24).** v2 is built as **Wave 7+ in this repo** on a dedicated
+`v2` development branch, merged to `main` for a **combined v1+v2 launch** (the v1 PyPI
+claim / `v0.1.0` tag work proceeds in parallel and ships together). Portfolio *and* real
+use are both goals (Q2); Quellgeist stays distinct from Aperture by default (Q19 no-pref).
+
+## Considered
+
+- **Make the core loop async / interruptible for HITL** — rejected: `run_loop` is the
+  measured artifact; an interruptible rewrite risks changing its behaviour and the
+  fine-tune comparability. Wrap it in a resumable orchestrator instead.
+- **Postgres now** — rejected for v2: infra overhead the demo/portfolio concurrency does
+  not need; SQLite + WAL suffices. Revisit for multi-node.
+- **Ship v1 first, then v2** — rejected per the user (Q20): launch together.
+- **Add a 4th evidence type (traces / k8s / alerts) in v2** — deferred: a new tool
+  reintroduces speculative-filtering risk without a retrain, and the user picked no
+  signal direction (Q13) and verifier-only (Q14). Keep the frozen three.
+- **A live cost/latency dashboard** — rejected per the user (Q16): the offline matrix is
+  enough; instrument and persist, don't build a UI.
+- **A separate v2 repo** — rejected (Q24): stay in-repo as Wave 7+; a branch gives the
+  isolation without forking the project.
+
+## Consequence
+
+Quellgeist becomes a **continuously-running, concurrent, observable incident-response
+service** with a human review gate and a post-fix (sandbox) resolution-verification loop,
+demoable end-to-end in ~3 minutes, packaged in a Dockerfile — while the fine-tune
+comparability and **every frozen surface stay untouched** and all prior tests remain
+byte-identical. The reliability story gains a **timing-aware verifier** and a genuine
+**out-of-structure generalisation** claim backed by a curated public-postmortem holdout.
+
+**Deferred / non-blocking:** the `resource_exhaustion` trajectory-mix; the MCP-client
+wire path; Postgres; multi-node scale; a live metrics dashboard.
+
+**New drift risks this DR creates (mitigations in the v2 spec):** (a) a concurrent
+service must give **each incident an isolated signal snapshot**, or parallel runs read
+each other's signals; (b) webhooks need an **idempotency key** (incident id) against
+duplicate deliveries; (c) a public repo raises the bar on **secret hygiene**; (d) the
+new out-of-structure corpus must never leak into the **frozen** holdout, and any new
+fine-tune must still report the frozen number for comparability.
+
+## Notes
+
+- **Doc-precision item — RESOLVED:** the README/plan assert "247 tests"; the source has 215
+  `def test_` functions. Verified 2026-07-09 via `uv run pytest tests/ --collect-only -q`:
+  **247 collected cases** (parametrise expansion). "247 tests" is accurate as collected cases.
+- **Claim-precision item (low):** the "$0 fully offline" headline pairs the local tuned
+  reasoner with a verifier that in some measured cells was hosted; the matrix runner already
+  pins the verifier to the **base local** artifact — keep the offline column's verifier local
+  and say so.
+
+## Deferred DRs (opened at their wave start)
+
+- **DR-0024 — Timing-aware verifier design** (the culprit-after-errors detector; probe set).
+- **DR-0025 — Structure-varied corpus + public-postmortem out-of-structure holdout** (skeleton
+  parameters; curation/attribution/copyright rules; measurement discipline vs the frozen holdout).
+- **DR-0026 — `resource_exhaustion` trajectory-mix** (targeted training data; optional).
+- **DR-0027 — HITL protocol + resumable orchestration** (hint-injection points; review-gate
+  state machine; how it stays off the measured loop).

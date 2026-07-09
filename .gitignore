@@ -10,6 +10,8 @@ dist/
 venv/
 .env
 .env.*
+# but DO commit the placeholder template (v2; secrets stay env-only):
+!.env.example
 
 # Caches
 .pytest_cache/
