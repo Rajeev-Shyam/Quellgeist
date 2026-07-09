@@ -13,6 +13,15 @@ import sqlite3
 from quellgeist.clock import now_ts as _now
 from quellgeist.store.models import Incident, RunRecord
 
+from datetime import UTC, datetime
+
+from quellgeist.store.models import Incident, RunRecord
+
+
+def _now() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 # --- incidents ------------------------------------------------------------------
 
 

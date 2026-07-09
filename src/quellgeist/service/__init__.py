@@ -10,6 +10,8 @@ the service is **fail-closed** (an empty webhook secret rejects all requests).
 lazily-built env instance for ``uvicorn`` (built on first access, NOT at import — so
 importing this package for ``ServiceConfig`` / ``create_app`` never parses the env or
 constructs the app; review: import side-effects).
+``create_app(config)`` is the injectable factory; ``app`` is the env-built instance for
+``uvicorn quellgeist.service:app``.
 """
 
 from __future__ import annotations
@@ -31,3 +33,7 @@ def __getattr__(name: str):
             _app = create_app(ServiceConfig.from_env())
         return _app
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+from quellgeist.service.app import app, create_app
+from quellgeist.service.config import ServiceConfig
+
+__all__ = ["ServiceConfig", "app", "create_app"]
