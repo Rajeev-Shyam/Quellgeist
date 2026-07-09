@@ -180,6 +180,98 @@ def test_investigate_records_abstention(tmp_path):
         conn.close()
 
 
+class _BoomProvider:
+    calls: list = []
+
+    def complete(self, messages):
+        raise RuntimeError("provider down")
+
+
+def test_investigate_persists_failed_on_provider_error(tmp_path):
+    db = tmp_path / "q.db"
+    store.init_db(db)
+    conn = store.connect(db)
+    dao.create_incident(
+        conn,
+        Incident(
+            "inc-f", "webhook", "2026-07-09T10:00:00Z", str(tmp_path / "sf"), "queued"
+        ),
+    )
+    conn.close()
+    snap = _snapshot(
+        tmp_path / "sf",
+        [{"id": 0, "ts": "2026-07-09T10:00:00Z", "level": "INFO", "msg": "x"}],
+        [],
+    )
+
+    res = investigate("inc-f", snap, provider=_BoomProvider(), db_path=db, model="fake")
+
+    assert res.diagnosis.abstained  # degraded fallback
+    conn = store.connect(db)
+    try:
+        (r,) = dao.list_runs(conn, "inc-f")
+        assert r.outcome == "failed"
+        assert (
+            dao.get_incident(conn, "inc-f").status == "failed"
+        )  # NOT stuck at running
+        assert "failed" in [e["kind"] for e in dao.list_events(conn, "inc-f")]
+    finally:
+        conn.close()
+
+
+def test_investigate_failed_persistence_is_terminal_and_preserves_diagnosis(
+    tmp_path, monkeypatch
+):
+    """A failure in the persistence chain (after run_loop succeeds) must still leave the
+    incident terminal (not 'running') and keep the diagnosis in the event log."""
+    db = tmp_path / "q.db"
+    store.init_db(db)
+    conn = store.connect(db)
+    dao.create_incident(
+        conn,
+        Incident(
+            "inc-p", "webhook", "2026-07-09T10:00:00Z", str(tmp_path / "sp"), "queued"
+        ),
+    )
+    conn.close()
+    snap = _snapshot(
+        tmp_path / "sp",
+        [
+            {
+                "id": 2,
+                "ts": "2026-07-09T10:00:02Z",
+                "level": "ERROR",
+                "msg": "verify_token",
+            }
+        ],
+        [
+            {
+                "sha": "a1b2c3d",
+                "ts": "2026-07-09T09:59:00Z",
+                "msg": "d",
+                "files": ["a.py"],
+            }
+        ],
+    )
+    # make the post-run_loop persistence blow up
+    monkeypatch.setattr(
+        dao,
+        "record_diagnosis",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db kaput")),
+    )
+    provider = FakeProvider(_investigate_script(2, "a1b2c3d"))
+
+    investigate("inc-p", snap, provider=provider, db_path=db, model="fake")
+
+    conn = store.connect(db)
+    try:
+        assert dao.get_incident(conn, "inc-p").status == "failed"  # not stuck 'running'
+        failed = [e for e in dao.list_events(conn, "inc-p") if e["kind"] == "failed"]
+        assert failed and "diagnosis" in (failed[-1]["detail_json"] or "")  # preserved
+    finally:
+        conn.close()
+
+
 def test_concurrent_investigations_are_isolated(tmp_path):
     """N incidents in parallel: each run's trace only ever saw ITS OWN snapshot's
     handles — the concurrency-correctness guarantee (no shared global env)."""

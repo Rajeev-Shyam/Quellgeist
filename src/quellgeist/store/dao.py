@@ -9,14 +9,9 @@ executor thread; the ingress opens one in the event-loop thread).
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime
 
+from quellgeist.clock import now_ts as _now
 from quellgeist.store.models import Incident, RunRecord
-
-
-def _now() -> str:
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
 
 # --- incidents ------------------------------------------------------------------
 

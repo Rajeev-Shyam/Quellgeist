@@ -167,6 +167,102 @@ def test_duplicate_delivery_is_idempotent(tmp_path):
         conn.close()
 
 
+def test_good_signature_reports_snapshot_count(tmp_path):
+    with TestClient(create_app(_config(tmp_path))) as client:
+        r = _post(client, {"id": "inc-cnt"})
+        assert r.json()["snapshot_files"] == 2  # log + deploy present, metrics absent
+
+
+def test_incident_id_path_traversal_rejected(tmp_path):
+    with TestClient(create_app(_config(tmp_path))) as client:
+        for bad in ("../../etc/passwd", "a/b", "..", "with space", "x" * 200):
+            assert _post(client, {"id": bad}).status_code == 400, bad
+    # nothing escaped the signals dir
+    assert not (tmp_path.parent / "etc").exists()
+
+
+def test_non_object_json_body_rejected(tmp_path):
+    with TestClient(create_app(_config(tmp_path))) as client:
+        for body in ("null", "42", "[1]", '"x"'):
+            raw = body.encode()
+            r = client.post(
+                "/incidents",
+                content=raw,
+                headers={"x-quellgeist-signature": sign(SECRET, raw)},
+            )
+            assert r.status_code == 400, body
+
+
+def test_non_string_hint_rejected(tmp_path):
+    with TestClient(create_app(_config(tmp_path))) as client:
+        raw = json.dumps({"id": "inc-h", "hint": {"a": 1}}).encode()
+        r = client.post(
+            "/incidents",
+            content=raw,
+            headers={"x-quellgeist-signature": sign(SECRET, raw)},
+        )
+        assert r.status_code == 400
+
+
+def test_malformed_json_and_missing_id_rejected(tmp_path):
+    with TestClient(create_app(_config(tmp_path))) as client:
+        bad = b"{not json"
+        assert (
+            client.post(
+                "/incidents",
+                content=bad,
+                headers={"x-quellgeist-signature": sign(SECRET, bad)},
+            ).status_code
+            == 400
+        )
+        assert _post(client, {"hint": "no id here"}).status_code == 400
+
+
+def test_unknown_incident_returns_404(tmp_path):
+    with TestClient(create_app(_config(tmp_path))) as client:
+        assert client.get("/incidents/nope").status_code == 404
+
+
+def test_oversized_body_rejected_413(tmp_path):
+    cfg = _config(tmp_path)
+    cfg.max_body_bytes = 50
+    with TestClient(create_app(cfg)) as client:
+        raw = json.dumps({"id": "big", "hint": "x" * 200}).encode()
+        r = client.post(
+            "/incidents",
+            content=raw,
+            headers={"x-quellgeist-signature": sign(SECRET, raw)},
+        )
+        assert r.status_code == 413
+
+
+def test_multi_worker_processes_all_incidents(tmp_path):
+    """The real queue + multi-worker path (not a direct investigate call): N concurrent
+    signed deliveries all reach a terminal persisted run."""
+    cfg = _config(tmp_path)
+    cfg.num_workers = 3
+    ids = [f"m-{i}" for i in range(6)]
+    with TestClient(create_app(cfg)) as client:
+        for iid in ids:
+            assert _post(client, {"id": iid}).status_code == 202
+        deadline = time.monotonic() + 15.0
+        while time.monotonic() < deadline:
+            statuses = [client.get(f"/incidents/{i}").json()["status"] for i in ids]
+            if all(s == "pending_review" for s in statuses):
+                break
+            time.sleep(0.05)
+        assert all(
+            client.get(f"/incidents/{i}").json()["status"] == "pending_review"
+            for i in ids
+        )
+    conn = store.connect(cfg.db_path)
+    try:
+        for iid in ids:
+            assert len(dao.list_runs(conn, iid)) == 1  # each processed exactly once
+    finally:
+        conn.close()
+
+
 def test_full_webhook_to_persisted_run(tmp_path):
     """The headline path: signed POST → worker → orchestrator → persisted cited run."""
     cfg = _config(tmp_path)

@@ -11,14 +11,14 @@ from __future__ import annotations
 
 import structlog
 
-_configured = False
-
 
 def configure_logging(*, json_output: bool = True) -> None:
-    """Install the JSON (or dev-console) structlog pipeline once per process."""
-    global _configured
-    if _configured:
-        return
+    """Install the JSON (or dev-console) structlog pipeline for this process.
+
+    Always (re)installs rather than short-circuiting on a private flag: another module
+    (e.g. ``demo/app``) may have called ``structlog.configure`` at import with a
+    different chain, and the service process must win — it owns logging when it starts
+    (review: structlog global-config contention)."""
     renderer = (
         structlog.processors.JSONRenderer()
         if json_output
@@ -33,7 +33,6 @@ def configure_logging(*, json_output: bool = True) -> None:
         ],
         logger_factory=structlog.PrintLoggerFactory(),  # stdout, one line per event
     )
-    _configured = True
 
 
 def get_logger(name: str = "quellgeist.service") -> structlog.BoundLogger:

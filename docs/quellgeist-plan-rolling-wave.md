@@ -427,8 +427,34 @@ hand-wave):** the worker builds **incident-scoped tool closures** bound to the s
 dir instead of mutating process-global `os.environ` — the only thread-safe way to isolate
 concurrent incidents; reuses the frozen tool-description strings + `ingest`/`filters`,
 touching nothing frozen. Fail-closed (empty webhook secret rejects all; a fabricated
-citation is persisted, not posted). 254 → 274 tests; ruff+black+bandit green; frozen diff
-empty; live uvicorn boot verified. T8 (notify + review gate) opens next with DR-0027.
+citation is persisted, not posted). Live uvicorn boot verified; frozen diff empty.
+
+**Six-persona review + fixes (2026-07-09, post-merge):** senior architect / QA / acceptance
+/ security / SWE / PM reviewed Wave 7. Fixes landed (all additive, frozen surface still
+untouched): **incident_id path-traversal validation** (`^[A-Za-z0-9_-]{1,128}$`), non-object
+JSON body & non-string hint → 400 (were 500), **request body size cap** (413) + **bounded
+queue**, **create-before-snapshot ordering + atomic snapshot** (no torn-snapshot race),
+**terminal-state guarantee** in `investigate` (a persistence failure yields a `failed`
+incident with the diagnosis preserved in the event log — never stuck at `running`),
+**graceful worker-pool drain** on shutdown (no orphaned executor thread), **event-loop
+offload** of all blocking SQLite/file work (`asyncio.to_thread` + sync GET), structlog
+config precedence, usage captured on failed runs, `_now` de-duplicated, lazy `app` build.
+274 → 284 tests; ruff+black+bandit green.
+
+**Carried into Wave 8 (from the PM review — do NOT ship posting without these):**
+- **T8.0 (prerequisite): wire the base verifier (`agent.verifier.verify`) into
+  `orchestrator.investigate` before any auto-post.** The live path is currently
+  *fabrication-checked only*; DR-0023 marks the verifier "load-bearing" for the system-level
+  6/12 abstention number, so posting an unverified diagnosis would ship the intrinsic 0/12
+  behaviour under a verified-reliability claim. Pin the verifier separately (never
+  `QG_MODEL`; DR-0016).
+- **Operator-endpoint auth**: `GET /incidents/{id}` is currently unauthenticated (exposes run
+  metadata) and the webhook has no replay window — both are Wave-8 items alongside the HTML
+  review UI (add a shared-secret/session check + an `X-Quellgeist-Timestamp` freshness bound).
+- **Verify the combined v1+v2 launch decision** at the boundary (v1 Wave-5 launch tasks are
+  still user-gated).
+
+T8 (notify + review gate) opens next with DR-0027 (fold in T8.0).
 
 ## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 
