@@ -294,10 +294,13 @@ The full decision history lives in the
 | 3 | Breadth: config/env + resource-exhaustion classes, metrics, ~50 scenarios | ✅ done — 3 classes across a 65-scenario suite; first full run **61/65, 0 fabricated**; judge validated (kappa 0.81). See the [reliability](docs/case-studies/wave3-reliability-rate.md) + [judge](docs/case-studies/wave3-judge-validation.md) case studies |
 | **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | ✅ **done** — base **0/16 → tuned 12/16** holdout (0 fabricated, 0 speculative-filter, cheaper than base); frontier-competitive vs Gemma-4-31B (beats it 10/16 on capability, ties 6/12 on abstention); `resource_exhaustion` unlearned + adversarial abstention a shared 6/12 ceiling ([case study](docs/case-studies/wave4-qwen-finetune.md), DR-0019/DR-0020) |
 | **5** | Polish & ship: HTML render, security pass, MCP registry, launch | 🚧 **engineering complete — release-gated** (HTML render + security scanners + threat model + registry/OIDC scaffolding done; the release tag + launch are the remaining steps) |
-| 6 | Resolution-verification loop | ⏳ cut-first |
+| 6 | Resolution-verification loop | ⤳ folded into v2 (Wave 9) |
+| **v2 (7+)** | Live incident-response service (webhook → concurrent workers → persisted runs → HITL review → Slack/HTML → sandbox resolution re-check) + reliability track (timing-aware verifier, out-of-structure generalisation) | 🚧 scoped — [DR-0023](docs/quellgeist-adr-log.md), [spec](docs/quellgeist-v2-spec.md) |
 
 The wave boundary is deliberate, not unfinished: only the current wave is built in
-detail, and later waves are scoped but intentionally unimplemented.
+detail, and later waves are scoped but intentionally unimplemented. **v2 is additive
+over the proven v1 core — the frozen fine-tune measurement surface is never touched
+([DR-0023](docs/quellgeist-adr-log.md); guarded by `tests/frozen/`).**
 
 ## Reliability gate
 
