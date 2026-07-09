@@ -354,6 +354,37 @@ regenerate `matrix-report.md`; (b) a targeted `resource_exhaustion` trajectory-m
 + a timing-aware verifier — a **new training decision (DR-0021), out of scope for a
 polish-and-ship wave.** Don't reopen training inside Wave 5.
 
+## v1.1 (post-v1) — Real-data ingestion + robustness *(shipped 2026-07-09; DR-0022)*
+
+**Scope:** broaden v1 from "diagnoses three hand-authored files" to "point it at
+your real incident," without touching the frozen DR-0020 measurement surface (tool
+descriptions, evidence schema, corpora, observation format, `filters`). Motivated by
+three reproduced real-data failures: a single non-JSON line crashed `query_logs`; no
+observation cap (a 5k-line log → ~277k tokens in one turn); rigid `…Z`-only timestamps.
+
+**Shipped:**
+- `src/quellgeist/ingest/` — field-alias + timestamp/level normalisation and tolerant
+  readers for real logs (file/dir; JSONL/JSON/plain-text/mixed/malformed), deploys
+  (JSON / GitHub payload / `git log` text), and metrics (Prometheus / canonical array),
+  with source-stable id assignment (DR-0009). Value-preserving on canonical rows
+  (guarded test: the whole fixture suite round-trips unchanged).
+- `quellgeist ingest` — writes the three canonical files + copy-pasteable next-steps.
+- Real-file robustness in `servers/tools` (CLI/MCP path only): tolerant log reading +
+  a most-recent-N observation cap (`QG_MAX_ROWS`/`QG_MAX_POINTS`); commits/metrics
+  readers stay strict (DR-0009 "surface real corruption").
+- The deterministic fabrication check relocated into the installed package
+  (`quellgeist.agent.citations`; `evals` re-exports it), and wired into
+  `quellgeist diagnose` (warn by default; `--strict-citations` → exit 3) so the
+  cite-or-abstain guarantee runs at real-use time.
+- A deterministic real-shaped E2E harness (`tests/e2e/`) proving no-crash, bounded
+  observation, correct cited diagnosis, and zero fabrication on messy data. 198 → 247
+  tests; ruff + black + bandit green.
+
+**Deferred (non-blocking):** a streaming reader for multi-GB logs; more ingest adapters
+(journald, Datadog, OTLP) as real users ask; an optional in-loop citation verifier.
+Training decisions (DR-0021 corpus revision; resource_exhaustion trajectory-mix) remain
+unopened — this increment is deliberately not a training change.
+
 ## Wave 6 — Resolution-verification Loop *(deferred / cut-first)*
 
 **Objective:** after a controlled fix is applied in the sandbox, the agent re-reads signals and confirms recovery. No autonomous prod mutation.

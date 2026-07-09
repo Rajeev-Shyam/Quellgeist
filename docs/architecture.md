@@ -134,6 +134,16 @@ sequenceDiagram
   no network and no write path. Tool arguments never choose the file path, so there
   is no traversal surface. `bandit` + `pip-audit` run in a dedicated CI workflow.
 
+- **Real-data ingestion is additive and off the frozen path (DR-0022).** The
+  `ingest` package + `quellgeist ingest` normalise real logs/deploys/metrics (foreign
+  field names, varied timestamps, mixed/malformed lines) into the canonical schema;
+  the CLI log reader tolerates messy files and caps observation size. This lives on
+  the CLI/MCP *real-file* path only — the eval harness serves in-memory fixtures
+  through `filters` directly — so the DR-0020 measurement surface (tool descriptions,
+  evidence schema, corpora, observation format) is byte-identical. The deterministic
+  citation check (`agent/citations.py`) now also runs in `quellgeist diagnose`, so the
+  cite-or-abstain guarantee is enforced at real-use time, not only in evals.
+
 - **Train/eval separation is absolute (DR-0003/DR-0020).** The fine-tune trains on
   the fixtures *distribution*; the 16-scenario **holdout** (disjoint token banks) is
   never trained on and selected only explicitly (`QG_SCENARIOS_DIR`). The headline
@@ -150,6 +160,8 @@ sequenceDiagram
 | `src/quellgeist/agent/providers.py` | LiteLLM provider seam; retry/backoff; usage records |
 | `src/quellgeist/agent/schema.py` | `Diagnosis` / `Hypothesis` / evidence-handle contract |
 | `src/quellgeist/agent/verifier.py` | model verifier (evidence-supports-cause) |
+| `src/quellgeist/agent/citations.py` | deterministic keyless fabrication check (shared by the CLI + evals, DR-0022) |
+| `src/quellgeist/ingest/` | real-source adapters → canonical schema; tolerant, id-stable (DR-0022) |
 | `src/quellgeist/servers/` | the three read-only MCP servers + shared filters |
 | `src/quellgeist/output/postmortem.py` | deterministic Markdown / HTML render |
 | `evals/` | fabrication check, keyword + LLM judges, judge validation, comparison matrix |
