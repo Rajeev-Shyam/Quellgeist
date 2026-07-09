@@ -406,15 +406,29 @@ checklist runs at its close.
 
 | Wave | Scope | Status |
 |---|---|---|
-| **7** | Service spine: `store` (SQLite WAL) + `observability` + `service` (signed webhook, healthz) + worker pool + isolated snapshots + run persistence + the frozen-surface guard | ⏳ next — detailed at kickoff |
+| **7** | Service spine: `store` (SQLite WAL) + `observability` + `service` (signed webhook, healthz) + worker pool + isolated snapshots + run persistence + the frozen-surface guard | ✅ built — signed webhook → concurrent workers → persisted cited runs; incident-scoped tool closures for isolation; 254 → 274 tests; frozen diff empty |
 | 8 | Output + HITL: `notify` (Slack + HTML), review gate (approve/steer/reject), hint-at-trigger | ⏳ scoped |
 | 9 | Resolution-verification (Wave-6 content, sandbox only) + Dockerfile + `compose.yml` + SECURITY.md | ⏳ scoped |
 | 10 | Track B (parallel): timing-aware verifier (DR-0024) + structure-varied/out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026) | ⏳ scoped |
 
-**Setup landed this session (pre-Wave-7):** the three v2 docs (DR-0023, spec, brief),
-this plan section, `tests/frozen/test_frozen_surface.py` (the anti-drift guard — golden
-tool-string hash + schema field order + observation/retry format), `.env.example`, and
-new-module scaffolds. No wave logic built yet — Wave 7 opens with a `writing-plans` plan.
+**Setup landed (pre-Wave-7):** the three v2 docs (DR-0023, spec, brief), this plan
+section, `tests/frozen/test_frozen_surface.py` (the anti-drift guard — golden tool-string
+hash + schema field order + observation/retry format), `.env.example`, and new-module
+scaffolds.
+
+**Wave 7 built (T7.1–T7.5):** `store` (SQLite WAL + migrations + DAO), `observability`
+(contextvar correlation ids + structlog JSON + `summarize_usage` over the existing
+`CallUsage`, no edit to `providers.py`), `orchestrator` (`investigate`: run the frozen
+loop → deterministic fabrication check → persist trace+cost → `pending_review`), and
+`service` (async FastAPI: HMAC-signed `POST /incidents`, idempotent, per-incident signal
+snapshots, bounded worker pool running the sync loop in a thread executor; `GET /healthz`;
+`GET /incidents/{id}` JSON status). **Key design decision (refines the spec's env
+hand-wave):** the worker builds **incident-scoped tool closures** bound to the snapshot
+dir instead of mutating process-global `os.environ` — the only thread-safe way to isolate
+concurrent incidents; reuses the frozen tool-description strings + `ingest`/`filters`,
+touching nothing frozen. Fail-closed (empty webhook secret rejects all; a fabricated
+citation is persisted, not posted). 254 → 274 tests; ruff+black+bandit green; frozen diff
+empty; live uvicorn boot verified. T8 (notify + review gate) opens next with DR-0027.
 
 ## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 

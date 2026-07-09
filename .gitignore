@@ -13,6 +13,10 @@ venv/
 # but DO commit the placeholder template (v2; secrets stay env-only):
 !.env.example
 
+# v2 service runtime: SQLite store + per-incident signal snapshots (QG_DB_PATH /
+# QG_SIGNALS_DIR default here). Never committed.
+var/
+
 # Caches
 .pytest_cache/
 .ruff_cache/

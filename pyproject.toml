@@ -36,7 +36,8 @@ quellgeist-commits-mcp = "quellgeist.servers.commits_mcp:main"
 quellgeist-metrics-mcp = "quellgeist.servers.metrics_mcp:main"
 
 [dependency-groups]
-dev = ["pytest", "ruff", "black", "pre-commit"]
+# httpx: FastAPI's TestClient (Starlette) needs it for the v2 service tests (Wave 7).
+dev = ["pytest", "ruff", "black", "pre-commit", "httpx"]
 # Security scanners (Wave 5, DR-0005). A separate group so the default `uv sync`
 # stays lean; the `security` CI workflow installs it with `uv sync --group security`.
 security = ["bandit", "pip-audit"]

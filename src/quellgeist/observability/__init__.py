@@ -1,20 +1,28 @@
-"""quellgeist.observability — correlation ids + structured logs + cost. SCAFFOLD (Wave 7, T7.2).
+"""quellgeist.observability — correlation ids + structured logs + cost. Wave 7 (T7.2).
 
-Not yet implemented. Per [DR-0023](../../../docs/quellgeist-adr-log.md) decision 3
-and the [v2 spec](../../../docs/quellgeist-v2-spec.md) §Components. Self-observability
-is a v2 requirement; this threads a per-incident/per-run id through a run and persists
-its `CallUsage` cost — **without editing `agent/providers.py`'s measured behaviour**
-(it reads the provider's existing in-memory `CallUsage` list after the run).
-
-Planned surface:
-- ``run_context(incident_id) -> contextmanager`` — binds ``run_id`` + ``incident_id``
-  into a ``contextvars``-backed structlog context.
-- ``summarize_usage(provider) -> UsageSummary`` — sums the provider's ``CallUsage``.
-- ``attach(run_record, usage)``.
-
-Depends on ``structlog`` (already a dep) and ``agent.providers.CallUsage`` (read-only).
+Self-observability (DR-0023 decision 3): ``run_context`` binds a per-incident/per-run
+id into structlog for the duration of a run; ``configure_logging`` installs the JSON
+pipeline; ``summarize_usage`` sums the provider's existing in-memory ``CallUsage``
+records into a per-run cost — all **without editing** ``agent/providers.py``'s measured
+behaviour. The store persists the summary + trace; there is no live dashboard (Q16).
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from quellgeist.observability.context import (
+    current_ids,
+    new_run_id,
+    run_context,
+)
+from quellgeist.observability.logging import configure_logging, get_logger
+from quellgeist.observability.usage import UsageSummary, summarize_usage
+
+__all__ = [
+    "UsageSummary",
+    "configure_logging",
+    "current_ids",
+    "get_logger",
+    "new_run_id",
+    "run_context",
+    "summarize_usage",
+]

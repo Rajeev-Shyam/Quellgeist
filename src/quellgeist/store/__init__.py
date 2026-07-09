@@ -1,20 +1,24 @@
-"""quellgeist.store — durable run history (SQLite WAL). SCAFFOLD (Wave 7, T7.1).
+"""quellgeist.store — durable run history (SQLite WAL). Wave 7 (T7.1); DR-0023 decision 2.
 
-Not yet implemented. This package is the v2 persistence layer per
-[DR-0023](../../../docs/quellgeist-adr-log.md) decision 2 and the
-[v2 spec](../../../docs/quellgeist-v2-spec.md) §Components. Wave 7 fills it in; the
-plan opens with the writing-plans flow, so nothing here is built ahead of its wave.
-
-Planned surface (see the spec for the DDL):
-- ``connect() -> sqlite3.Connection`` — WAL-mode connection.
-- DAO: ``create_incident``, ``record_run``, ``append_event``, ``set_review``,
-  ``get_incident``, ``list_runs``.
-- ``migrations/`` — forward-only schema (`incidents`, `runs`, `diagnoses`,
-  `evidence`, `events`).
-
-Reuses nothing frozen; reads/writes only its own SQLite file (``QG_DB_PATH``).
+Zero-infra persistence sized for the demo/portfolio: WAL gives concurrent readers
+alongside a single writer. ``init_db`` applies forward-only migrations once; ``connect``
+opens a configured, single-thread connection per unit of work; ``dao`` is the thin SQL
+layer over the five tables (``incidents``, ``runs``, ``diagnoses``, ``evidence``,
+``events``). Reads/writes only its own SQLite file (``QG_DB_PATH``); touches nothing
+frozen.
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from quellgeist.store import dao
+from quellgeist.store.db import apply_migrations, connect, init_db
+from quellgeist.store.models import Incident, RunRecord
+
+__all__ = [
+    "Incident",
+    "RunRecord",
+    "apply_migrations",
+    "connect",
+    "dao",
+    "init_db",
+]
