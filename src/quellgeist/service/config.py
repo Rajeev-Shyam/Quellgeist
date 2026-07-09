@@ -20,6 +20,8 @@ class ServiceConfig:
     signals_dir: str = "./var/signals"
     webhook_secret: str = ""  # empty => the service rejects ALL webhooks (fail-closed)
     num_workers: int = 2
+    queue_maxsize: int = 1000  # bounded queue -> backpressure, not unbounded memory
+    max_body_bytes: int = 1_000_000  # reject bodies larger than this (413)
     model: str = "ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
     # sources the ingress snapshots per incident (the operator's live signal files)
     log_path: str = "demo/incident_logs.jsonl"
@@ -48,6 +50,8 @@ class ServiceConfig:
             signals_dir=os.environ.get("QG_SIGNALS_DIR", "./var/signals"),
             webhook_secret=os.environ.get("QG_WEBHOOK_SECRET", ""),
             num_workers=_int("QG_WORKERS", 2),
+            queue_maxsize=_int("QG_QUEUE_MAXSIZE", 1000),
+            max_body_bytes=_int("QG_MAX_BODY_BYTES", 1_000_000),
             model=os.environ.get(
                 "QG_MODEL", "ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
             ),

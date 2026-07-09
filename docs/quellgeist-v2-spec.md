@@ -218,12 +218,16 @@ sequenceDiagram
 
 ## Concurrency model
 
-- **Isolation per incident (correctness-critical).** On accept, the service **snapshots** the
-  incident's signal files into a per-incident directory and points that run's tools at the
-  snapshot via the existing `QG_LOG_PATH`/`QG_DEPLOY_LOG`/`QG_METRICS_PATH` env seam **scoped
-  to the worker** (not process-global). Two concurrent incidents never read each other's
-  signals. (The current global-env pattern in `servers/tools.py` is read-only and unchanged;
-  the worker sets the env for its own call context.)
+- **Isolation per incident (correctness-critical).** On accept, the service **atomically
+  snapshots** the incident's signal files into a per-incident directory. The worker then
+  builds **incident-scoped tool closures** (`orchestrator.tools_factory.incident_tools`)
+  bound to that snapshot dir — NOT the process-global `QG_*_PATH` env, which has no
+  per-thread scoping and would let concurrent workers clobber each other's paths. The
+  closures reuse the frozen tool-description strings + `ingest`/`filters` but read from an
+  explicit dir, so two concurrent incidents provably never read each other's signals
+  (`tests/orchestrator/test_orchestrator.py::test_concurrent_investigations_are_isolated`).
+  (Implemented DR-0023; this supersedes the original env-scoping sketch, which was not
+  thread-safe — Wave-7 review.)
 - **Workers.** A bounded worker pool pulls from the in-process queue; each worker runs the
   **synchronous** `run_loop` in a thread executor so the async event loop stays responsive.
   The loop is CPU-light (it waits on model I/O), so a threadpool is the right primitive; no

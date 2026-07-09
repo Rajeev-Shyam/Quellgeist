@@ -26,12 +26,22 @@ class WorkerPool:
         self._workers: list[asyncio.Task] = []
 
     async def start(self) -> None:
-        self.queue = asyncio.Queue()
+        self.queue = asyncio.Queue(maxsize=self.config.queue_maxsize)
         self._workers = [
             asyncio.create_task(self._worker(i)) for i in range(self.config.num_workers)
         ]
 
-    async def stop(self) -> None:
+    async def stop(self, *, drain_timeout: float = 30.0) -> None:
+        """Drain in-flight work BEFORE cancelling workers. Cancelling a task blocked on
+        ``run_in_executor`` does not stop the underlying thread (it would keep writing to
+        the store after shutdown — review: orphaned executor thread), so we wait for the
+        queue to fully drain (each in-flight item calls ``task_done`` when its executor
+        run returns) with a bound, then cancel the now-idle workers."""
+        if self.queue is not None:
+            try:
+                await asyncio.wait_for(self.queue.join(), timeout=drain_timeout)
+            except TimeoutError:
+                _log.warning("worker_stop_drain_timeout", pending=self.queue.qsize())
         for w in self._workers:
             w.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)
