@@ -1,24 +1,23 @@
-"""quellgeist.orchestrator — resumable investigation around the FROZEN loop. SCAFFOLD (Wave 7–9).
+"""quellgeist.orchestrator — resumable investigation around the FROZEN loop. Wave 7 (T7.4).
 
-Not yet implemented. Per [DR-0023](../../../docs/quellgeist-adr-log.md) decisions
-5 & 6 and the [v2 spec](../../../docs/quellgeist-v2-spec.md) §Components. This is the
-ONLY place that knows about hints, the review gate, and resolution re-check — and it
-calls ``agent.loop.run_loop`` **unchanged** (the measured artifact is never edited;
-HITL is orchestration *around* it, never inside it).
+Per [DR-0023](../../../docs/quellgeist-adr-log.md) decisions 5 & 6. This is the only
+place that knows about hints, the review gate, and resolution re-check — and it calls
+``agent.loop.run_loop`` **unchanged**. ``incident_tools`` builds concurrency-safe tool
+closures bound to a per-incident snapshot dir (no process-global env), so parallel
+investigations never cross-read signals.
 
-Planned surface:
-- ``investigate(incident, signals, *, hint=None) -> RunRecord`` — default path calls
-  ``run_loop`` exactly as the CLI does, then the deterministic fabrication check +
-  the (optionally timing-aware) verifier, then ``pending_review``.
-- ``resume_after_review(run_id, decision, steer=None) -> RunRecord`` (Wave 8).
-- ``verify_resolution(incident, run_id) -> ResolutionVerdict`` (Wave 9, sandbox only —
-  no production mutation; DR-0001 boundary holds).
-
-**Frozen-path rule:** a hint is an extra *operator* message added around the loop; it
-never edits the system prompt or the ``Observation from …:`` / retry strings. If
-between-steps injection would touch those, fall back to trigger-time hints only.
+Wave 7 ships ``investigate`` (run → fabrication check → persist → ``pending_review``).
+``resume_after_review`` (Wave 8) and ``verify_resolution`` (Wave 9) wrap the same call.
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from quellgeist.orchestrator.investigate import InvestigationResult, investigate
+from quellgeist.orchestrator.tools_factory import incident_tools, read_signals
+
+__all__ = [
+    "InvestigationResult",
+    "incident_tools",
+    "investigate",
+    "read_signals",
+]
