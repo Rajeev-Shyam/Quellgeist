@@ -255,6 +255,30 @@ subset (DR-0018); still self-grading whenever `QG_JUDGE_MODEL` equals the reason
 > model-agnostic thesis in action (DR-0017). The intended *home* default remains a
 > local Qwen3-4B (DR-0008).
 
+## Using it on your real data
+
+The demo eats three canonical files; your production signals don't look like that.
+`quellgeist ingest` is the adapter — point it at real sources and it writes the
+canonical files the tools read:
+
+```bash
+quellgeist ingest \
+  --logs    /var/log/myapp/     # file or directory; JSONL, JSON, plain text, or mixed
+  --deploys deploys.json        # JSON array, GitHub payload, or `git log` text
+  --metrics prom.json           # a Prometheus response or a canonical array
+  --out-dir ./signals
+# prints the `export QG_*` lines; then:
+quellgeist diagnose --show-trace --strict-citations   # add --model / a provider key
+```
+
+It tolerates messy real data (foreign field names are aliased onto the schema,
+timestamps normalised to UTC, a malformed line coerced rather than crashing the
+run), and `query_logs` caps how many rows one observation returns (`QG_MAX_ROWS`,
+default 200) so a large log can't blow the context window. The deterministic
+cite-or-abstain guarantee runs **at real-use time**: `diagnose` verifies every
+cited handle against your real signals and warns on a fabrication (`--strict-citations`
+exits non-zero for CI). Full guide: [`docs/ingestion.md`](docs/ingestion.md).
+
 ## Status & roadmap
 
 Built in **rolling waves** — only the current wave is implemented in detail
@@ -277,12 +301,13 @@ detail, and later waves are scoped but intentionally unimplemented.
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **196 tests** (ruff +
+The deterministic CI gate is the reliability contract: **247 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
 cite-based judge gate, the verifier and advisory LLM-judge, parameterised
 scenario generation, the judge-validation harness, the server filters, the
-postmortem renderer, and the fixture-backed eval harness) on Python 3.12 and 3.13.
+postmortem renderer, the fixture-backed eval harness, the real-data ingestion +
+robustness layer, and an end-to-end real-incident harness) on Python 3.12 and 3.13.
 
 Out of band, the **model-driven eval** runs the reasoner over the 65-scenario
 suite. The latest full run scored **61/65 passed, 0 fabricated evidence**

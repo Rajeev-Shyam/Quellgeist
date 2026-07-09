@@ -18,15 +18,26 @@ Paths are resolved from operator-set env vars (``QG_LOG_PATH`` / ``QG_DEPLOY_LOG
 ``QG_METRICS_PATH``) with repo-relative defaults; files are opened read-only. Ids /
 shas / metric names pass through VERBATIM (never renumbered by result position) --
 the load-bearing DR-0009 property, enforced in ``filters``.
+
+**Real-data robustness (v1.1, DR-0022).** The log reader tolerates real files
+(mixed JSON / plain text; a malformed line is coerced, never fatal) and normalises
+them into the canonical schema via ``ingest``, and ``query_logs`` caps how many rows
+one call returns so a large production log cannot produce a context-blowing
+observation. This is confined to the CLI/MCP *real-file* path: the eval harness
+serves in-memory fixtures through ``filters`` directly, so the frozen measurement
+path is untouched. The commits/metrics readers stay strict (small, canonical files;
+feed messy sources through ``quellgeist ingest`` first).
 """
 
 from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
+from quellgeist.ingest.sources import read_log_source
 from quellgeist.servers.filters import (
     filter_log_rows,
     filter_metric_rows,
@@ -36,6 +47,12 @@ from quellgeist.servers.filters import (
 DEFAULT_LOG_PATH = "demo/incident_logs.jsonl"
 DEFAULT_DEPLOY_LOG = "demo/deploy_log.json"
 DEFAULT_METRICS_PATH = "demo/metrics.json"
+
+# Real-data guardrails (v1.1). Defaults are far above any demo/fixture result, so
+# the demo and the frozen eval path are byte-identical; they only bite real,
+# large production signals.
+DEFAULT_MAX_ROWS = 200
+DEFAULT_MAX_POINTS = 1000
 
 # Canonical tool descriptions -- the single source shared by the CLI, the eval
 # harness (scenario_tools), and the MCP servers. These are byte-identical to the
@@ -49,24 +66,63 @@ QUERY_METRICS_DESC = (
     "(cite it), `unit`, and `points`."
 )
 
+# Warn at most once per (message) so a tool re-read inside the loop doesn't spam
+# stderr; cleared implicitly by process lifetime (the loop is one process).
+_warned: set[str] = set()
+
+
+def _warn_once(msg: str) -> None:
+    if msg not in _warned:
+        _warned.add(msg)
+        print(f"warning: {msg}", file=sys.stderr)
+
+
+def _int_env(name: str, default: int) -> int:
+    """Read a non-negative int env override; fall back to ``default`` on anything
+    unparseable so a stray value can never crash a diagnosis."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        val = int(raw)
+    except ValueError:
+        return default
+    return val if val >= 0 else default
+
 
 def _log_path() -> Path:
     return Path(os.environ.get("QG_LOG_PATH", DEFAULT_LOG_PATH))
 
 
 def _read_log_rows(path: Path) -> list[dict[str, Any]]:
-    """Read a JSONL log into row dicts. Skips blank lines; lets malformed JSON
-    raise -- surfacing real corruption rather than silently dropping a row whose
-    id the fabrication check would then wrongly treat as nonexistent."""
-    if not path.exists():
-        return []
-    rows: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:  # read-only
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rows.append(json.loads(line))
+    """Read a log file (or directory) into canonical rows, tolerantly (v1.1).
+
+    Real logs mix formats and contain the odd malformed line; those are coerced or
+    skipped and counted, never fatal (a single bad line used to crash the whole
+    tool call). Field names are normalised and source-stable ids assigned via
+    ``ingest``. An already-canonical demo/exported log is unchanged."""
+    result = read_log_source(path)
+    if result.coerced or result.skipped:
+        _warn_once(
+            f"{path}: normalised real log data "
+            f"({result.coerced} non-JSON line(s) coerced, "
+            f"{result.skipped} entr(y/ies) skipped)"
+        )
+    return result.rows
+
+
+def _cap_rows(rows: list[dict[str, Any]], tool: str) -> list[dict[str, Any]]:
+    """Bound a log observation to the most-recent ``QG_MAX_ROWS`` rows so a large
+    production log cannot produce a context-blowing single turn. Keeps the tail
+    (most recent, where an active incident's errors are) in source order and warns
+    the operator to narrow with filters."""
+    cap = _int_env("QG_MAX_ROWS", DEFAULT_MAX_ROWS)
+    if cap and len(rows) > cap:
+        _warn_once(
+            f"{tool} returned {len(rows)} rows; showing the most-recent {cap} "
+            f"(raise QG_MAX_ROWS, or narrow with since/level/route)"
+        )
+        return rows[-cap:]
     return rows
 
 
@@ -75,7 +131,15 @@ def query_logs(
     level: str | None = None,
     route: str | None = None,
 ) -> list[dict[str, Any]]:
-    return filter_log_rows(_read_log_rows(_log_path()), since, level, route)
+    rows = filter_log_rows(_read_log_rows(_log_path()), since, level, route)
+    return _cap_rows(rows, "query_logs")
+
+
+def all_log_rows() -> list[dict[str, Any]]:
+    """Every canonical log row, UNCAPPED -- for the deterministic citation check,
+    which must validate cited handles against the true full signal set, not the
+    display-capped observation ``query_logs`` returns."""
+    return _read_log_rows(_log_path())
 
 
 def _deploy_log_path() -> Path:
@@ -86,7 +150,8 @@ def _read_commits(path: Path) -> list[dict[str, Any]]:
     """Read the deploy log (a JSON array of commit objects). Returns [] if the
     file is absent (no deploy injected yet). Malformed JSON / wrong top-level
     type raises -- surfacing real corruption rather than silently hiding a sha
-    the fabrication check would then wrongly call fabricated."""
+    the fabrication check would then wrongly call fabricated. Feed messy sources
+    (git log, GitHub payloads) through ``quellgeist ingest`` to get this shape."""
     if not path.exists():
         return []
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -112,7 +177,8 @@ def _read_metrics(path: Path) -> list[dict[str, Any]]:
     """Read the metrics source (a JSON array of series objects). Returns [] if the
     file is absent (no resource incident injected yet). Malformed JSON / wrong
     top-level type raises -- surfacing real corruption rather than silently hiding
-    a series the fabrication check would then wrongly call fabricated."""
+    a series the fabrication check would then wrongly call fabricated. Feed a
+    Prometheus response through ``quellgeist ingest`` to get this shape."""
     if not path.exists():
         return []
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -123,8 +189,28 @@ def _read_metrics(path: Path) -> list[dict[str, Any]]:
     return data
 
 
+def _cap_points(series: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bound each series' point list to the most-recent ``QG_MAX_POINTS`` so a
+    long time-series can't blow up an observation. The series NAME (the cited
+    handle) is always preserved, so the citation check is unaffected."""
+    cap = _int_env("QG_MAX_POINTS", DEFAULT_MAX_POINTS)
+    if not cap:
+        return series
+    out: list[dict[str, Any]] = []
+    for s in series:
+        points = s.get("points", [])
+        if len(points) > cap:
+            _warn_once(
+                f"query_metrics: series {s.get('metric')!r} has {len(points)} "
+                f"points; showing the most-recent {cap} (raise QG_MAX_POINTS)"
+            )
+            s = {**s, "points": points[-cap:]}
+        out.append(s)
+    return out
+
+
 def query_metrics(
     name: str | None = None,
     since: str | None = None,
 ) -> list[dict[str, Any]]:
-    return filter_metric_rows(_read_metrics(_metrics_path()), name, since)
+    return _cap_points(filter_metric_rows(_read_metrics(_metrics_path()), name, since))
