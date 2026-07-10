@@ -407,8 +407,8 @@ checklist runs at its close.
 | Wave | Scope | Status |
 |---|---|---|
 | **7** | Service spine: `store` (SQLite WAL) + `observability` + `service` (signed webhook, healthz) + worker pool + isolated snapshots + run persistence + the frozen-surface guard | ✅ built — signed webhook → concurrent workers → persisted cited runs; incident-scoped tool closures for isolation; 254 → 274 tests; frozen diff empty |
-| 8 | Output + HITL: `notify` (Slack + HTML), review gate (approve/steer/reject), hint-at-trigger | ⏳ scoped |
-| 9 | Resolution-verification (Wave-6 content, sandbox only) + Dockerfile + `compose.yml` + SECURITY.md | ⏳ scoped |
+| 8 | Output + HITL: `notify` (Slack + HTML), review gate (approve/steer/reject), hint-at-trigger | ✅ shipped (DR-0027) — verifier in the live path, fail-closed notify, review gate, operator auth, webhook replay; 284 → 318 tests |
+| 9 | Resolution-verification (Wave-6 content, sandbox only) + Dockerfile + `compose.yml` + SECURITY.md | ✅ built (DR-0028) — deterministic keyless `verify_resolution`, complete snapshot reaping (`posted`/`rejected`), Docker/compose, SECURITY.md v2; 318 → 339 tests; frozen diff empty |
 | 10 | Track B (parallel): timing-aware verifier (DR-0024) + structure-varied/out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026) | ⏳ scoped |
 
 **Setup landed (pre-Wave-7):** the three v2 docs (DR-0023, spec, brief), this plan
@@ -483,6 +483,90 @@ Additive only; frozen surface byte-locked (guard green); deterministic keyless g
 
 **Next:** Wave 9 = resolution-verification (`verify_resolution`, sandbox) + Dockerfile/compose;
 Track B (DR-0024–0026) unchanged. Verify the combined v1+v2 launch decision at the boundary.
+
+### Wave 9 — Resolution-verification (sandbox) + packaging *(BUILT; DR-0028)*
+
+Additive only; frozen surface byte-locked (guard green); deterministic keyless gate green
+(318 → 339 tests).
+
+- **T9.1 — `orchestrator.verify_resolution` (sandbox, read-only).** After a controlled fix is
+  applied to the demo, `verify_resolution(incident_id, *, config, run_id=None,
+  current_signals=None, since=None) -> ResolutionVerdict` re-reads the operator's **current
+  live signals** (not the frozen snapshot — so it survives snapshot reaping) and returns
+  `recovered | not_recovered | inconclusive`, appended to the run's `events`. Deterministic
+  and keyless: the incident's error signature (routes erroring before the fix) is recovered
+  from the pre-fix window of the current signals, and recovery is a set-membership check
+  (no model). **No production mutation** (DR-0001). The recovery boundary (`since`) defaults
+  to the most recent deploy after the run started (the presumed fix), overridable. The log
+  signature is authoritative; error-named metric deltas are recorded as corroborating detail.
+- **New demo fix script — `demo/chaos/fix_deploy.py`.** Heals `auth.verify_token` and records
+  a fix deploy **without truncating the incident log** (so post-fix healthy traffic is
+  observable → `recovered`). `reset.py` stays the full reset (truncates → honest
+  `inconclusive`, no signature to check).
+- **Snapshot reaping completed (closes the Wave-8 §5 limit).** `posted` and `rejected` now
+  reap the per-incident snapshot in `orchestrator.review.apply_review`, alongside the existing
+  `failed` reap in the worker. `pending_review` still keeps its snapshot (review/steer needs
+  it). Safe because resolution verification reads live signals, not the snapshot.
+- **Operator surface.** `POST /incidents/{id}/verify-resolution` (bearer-auth, fail-closed,
+  serialized under the per-incident lock); the verdict is surfaced on `GET /incidents/{id}/status`
+  (JSON) and the HTML page title.
+- **T9.2 — packaging.** Non-root `Dockerfile` (`uvicorn quellgeist.service:app`, `/healthz`
+  HEALTHCHECK) + `compose.yml` (demo + agent + Ollama, shared `signals`/`agent-data` volumes,
+  optional `env_file` so it starts fail-closed without a `.env`) + `.dockerignore`. `httpx`
+  promoted to a **runtime** dependency — the Slack poster uses it, so `pip install .` (the image)
+  must include it, not only the dev group. `compose config` validates; the image build is
+  validated in the Codespace (no daemon in the patch-authoring sandbox).
+- **T9.3 — SECURITY.md.** A v2 threat-model section grounded in the code: signed webhook
+  ingress + replay window, DoS bounds (streaming body cap, bounded queue), per-incident
+  isolation + no path traversal, authenticated fail-closed operator surface, fail-closed
+  posting with a separately-pinned verifier and one scoped Slack egress, read-only resolution
+  verification, and non-root container + secret hygiene.
+
+**Post-review hardening (adversarial multi-agent review — 8 raised, 7 CONFIRMED, all fixed).**
+A background Workflow ran 7 finder dimensions, each finding independently re-verified by a
+refute-by-default skeptic; the confirmed fixes: (1) **chaos deploy log to the shared volume** —
+`bad_deploy`/`fix_deploy`/`reset` now honor `QG_DEPLOY_LOG`, and compose sets it on the demo
+service, so the culprit-commit evidence actually reaches the agent under compose (it was writing
+to the demo container's private path); (2) **honest multi-route recovery** — `recovered` now
+requires *every* signature route to be confirmed healthy; a silent route → `inconclusive` (was
+over-claiming on any one healthy route); (3) **routeless signatures never claim recovered** —
+unattributable routeless traffic can't confirm recovery; (4) **steer-then-fail reaps its
+snapshot** — the inline steer re-run bypasses the worker's `failed` reap, so `apply_review` reaps
+it on a degraded terminal `failed` (no orphan); (5) **demo healthcheck** — compose overrides the
+image's `/healthz` probe with the demo's `/health` route; (6) **SECURITY.md** — corrected the
+"only mutations" claim to include the authenticated `resolution` audit event; (7) **stronger
+tests** — multi-route/routeless verdict cases, a byte-unchanged incident-log assertion for
+`fix_deploy`, and the steer-fail reap. The one refuted finding (a weak endpoint `since` test) was
+left as-is (the endpoint code was verified correct). 335 → 339 tests.
+
+### Wave 9 → Wave 10 boundary review (2026-07-10)
+
+- **What this wave taught us that changes downstream:** the resolution check is honestly
+  *deterministic* — recovery is a signal-membership question, not a reasoning one — so it stays
+  on the keyless gate and needs no model, which also let it be **snapshot-independent** and
+  therefore let snapshot reaping finally close the disk-growth limit for the whole lifecycle.
+  The packaging step surfaced a real latent gap (`httpx` was dev-only but is a runtime egress
+  dep) — building the image is the kind of adversarial pressure that finds these.
+- **Honest limits carried forward:** `inconclusive` is a first-class verdict, not a failure —
+  a reset that truncates the log, or a service with no post-fix traffic, genuinely cannot be
+  judged, and the check says so rather than guessing. Resolution verification is **sandbox-only**
+  by design (DR-0001); it observes, never remediates. The image build itself must be run once in
+  an environment with a Docker daemon (the patch-authoring session has none) — `compose config`
+  and a full manual review passed here.
+- **Boundary check — combined v1+v2 launch decision (carried from the Wave-8 review):** the v1
+  Wave-5 launch tasks remain **user-gated and unchanged** (claim the PyPI name + register the
+  trusted publisher, cut a real release tag to fire the OIDC publish workflows, claim the
+  ecosystem listings, post the launch). There is a `v0.1.0` **tag** in the repo; confirm what it
+  points at before claiming a release object exists. v2 (Waves 7–9) is now launch-ready
+  alongside v1: a signed webhook → concurrent investigation → persisted cited run → HITL review
+  → Slack + HTML → sandbox resolution re-check, packaged in a Dockerfile/compose.
+- **Cut/defer check:** no scope cut this boundary. Track B (DR-0024–0026) is unchanged and opens
+  at Wave 10 kickoff. Between-steps hint injection stays deliberately out (protects F4).
+- **Decisions:** DR-0028 opened and shipped (resolution-verification + packaging). Next new id
+  **DR-0029** (DR-0024–0026 remain reserved for Track B).
+- **Next wave:** Wave 10 (Track B) — timing-aware verifier (DR-0024) + structure-varied /
+  out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026), re-scoped to
+  task detail at kickoff. Never reopen training inside a ship wave.
 
 ## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 

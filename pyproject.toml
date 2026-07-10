@@ -25,6 +25,9 @@ dependencies = [
     "pydantic>=2",
     "prometheus-client",
     "structlog",
+    # runtime egress: the Slack poster (notify/slack.py) posts via httpx, so it must ship
+    # in the service image (`pip install .`), not only in the dev/test group (Wave 9, T9.2).
+    "httpx",
 ]
 
 [project.scripts]
@@ -36,8 +39,8 @@ quellgeist-commits-mcp = "quellgeist.servers.commits_mcp:main"
 quellgeist-metrics-mcp = "quellgeist.servers.metrics_mcp:main"
 
 [dependency-groups]
-# httpx: FastAPI's TestClient (Starlette) needs it for the v2 service tests (Wave 7).
-dev = ["pytest", "ruff", "black", "pre-commit", "httpx"]
+# httpx is a runtime dep (above) — the Slack poster and FastAPI's TestClient both use it.
+dev = ["pytest", "ruff", "black", "pre-commit"]
 # Security scanners (Wave 5, DR-0005). A separate group so the default `uv sync`
 # stays lean; the `security` CI workflow installs it with `uv sync --group security`.
 security = ["bandit", "pip-audit"]

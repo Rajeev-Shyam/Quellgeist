@@ -279,6 +279,33 @@ cite-or-abstain guarantee runs **at real-use time**: `diagnose` verifies every
 cited handle against your real signals and warns on a fabrication (`--strict-citations`
 exits non-zero for CI). Full guide: [`docs/ingestion.md`](docs/ingestion.md).
 
+## Run the live service (v2)
+
+v2 wraps the same frozen core in a live, concurrent, observable incident-response
+service: a **signed webhook** triggers an investigation, a worker pool runs the
+*unchanged* loop over an isolated per-incident snapshot, every run is persisted to
+SQLite with its trace and cost, an operator **approves / steers / rejects** before it
+posts to Slack + a self-contained HTML page, and after a sandbox fix the agent re-reads
+signals to confirm recovery. Everything additive; the frozen measurement surface is
+untouched. The whole stack runs from one file:
+
+```bash
+cp .env.example .env            # set QG_WEBHOOK_SECRET, QG_OPERATOR_TOKEN, QG_VERIFIER_MODEL…
+docker compose up --build       # demo service + agent service + Ollama
+docker compose exec ollama ollama pull qwen3:4b-instruct-2507-q4_K_M   # first run only
+
+# break it, trigger an investigation, review, then confirm the fix in the sandbox:
+docker compose exec demo python -m demo.chaos.bad_deploy
+#   … POST a signed incident to :8000/incidents, approve it on the HTML page …
+docker compose exec demo python -m demo.chaos.fix_deploy   # heal without wiping the log
+#   … POST /incidents/{id}/verify-resolution → recovered | not_recovered | inconclusive
+```
+
+Secrets stay env-only (public repo); the service is **fail-closed** — no webhook secret
+rejects every request, no operator token closes the operator surface, and it never posts a
+fabricated *or* unverified diagnosis. Design: [DR-0023](docs/quellgeist-adr-log.md) +
+[spec](docs/quellgeist-v2-spec.md).
+
 ## Status & roadmap
 
 Built in **rolling waves** — only the current wave is implemented in detail
@@ -295,7 +322,8 @@ The full decision history lives in the
 | **4** | **Cost / fine-tune: QLoRA Qwen3-4B vs base vs frontier, with/without verifier** | ✅ **done** — base **0/16 → tuned 12/16** holdout (0 fabricated, 0 speculative-filter, cheaper than base); frontier-competitive vs Gemma-4-31B (beats it 10/16 on capability, ties 6/12 on abstention); `resource_exhaustion` unlearned + adversarial abstention a shared 6/12 ceiling ([case study](docs/case-studies/wave4-qwen-finetune.md), DR-0019/DR-0020) |
 | **5** | Polish & ship: HTML render, security pass, MCP registry, launch | 🚧 **engineering complete — release-gated** (HTML render + security scanners + threat model + registry/OIDC scaffolding done; the release tag + launch are the remaining steps) |
 | 6 | Resolution-verification loop | ⤳ folded into v2 (Wave 9) |
-| **v2 (7+)** | Live incident-response service (webhook → concurrent workers → persisted runs → HITL review → Slack/HTML → sandbox resolution re-check) + reliability track (timing-aware verifier, out-of-structure generalisation) | 🚧 scoped — [DR-0023](docs/quellgeist-adr-log.md), [spec](docs/quellgeist-v2-spec.md) |
+| **v2 (7–9)** | Live incident-response service (webhook → concurrent workers → persisted runs → HITL review → Slack/HTML → sandbox resolution re-check) + Dockerfile/compose | ✅ **built** — Waves 7–9 shipped: signed webhook → concurrent workers → persisted cited runs → fail-closed HITL review gate → Slack/HTML → deterministic sandbox resolution re-check; non-root Docker + compose; **339 keyless tests**, frozen diff empty ([DR-0023](docs/quellgeist-adr-log.md)/[0027](docs/quellgeist-adr-log.md)/[0028](docs/quellgeist-adr-log.md), [spec](docs/quellgeist-v2-spec.md)) |
+| v2 Track B (10) | Reliability track: timing-aware verifier + structure-varied / out-of-structure generalisation eval | 🚧 scoped — DR-0024–0026 |
 
 The wave boundary is deliberate, not unfinished: only the current wave is built in
 detail, and later waves are scoped but intentionally unimplemented. **v2 is additive
@@ -304,13 +332,15 @@ over the proven v1 core — the frozen fine-tune measurement surface is never to
 
 ## Reliability gate
 
-The deterministic CI gate is the reliability contract: **247 tests** (ruff +
+The deterministic CI gate is the reliability contract: **339 tests** (ruff +
 black via pre-commit, then `pytest` — covering the loop's never-crash /
 graceful-abstention behaviour, the deterministic fabrication check and
 cite-based judge gate, the verifier and advisory LLM-judge, parameterised
 scenario generation, the judge-validation harness, the server filters, the
 postmortem renderer, the fixture-backed eval harness, the real-data ingestion +
-robustness layer, and an end-to-end real-incident harness) on Python 3.12 and 3.13.
+robustness layer, an end-to-end real-incident harness, and the v2 live service —
+signed webhook, concurrent per-incident isolation, HITL review gate, and the
+deterministic sandbox resolution check) on Python 3.12 and 3.13.
 
 Out of band, the **model-driven eval** runs the reasoner over the 65-scenario
 suite. The latest full run scored **61/65 passed, 0 fabricated evidence**

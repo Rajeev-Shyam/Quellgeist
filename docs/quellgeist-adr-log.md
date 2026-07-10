@@ -726,4 +726,50 @@ fine-tune must still report the frozen number for comparability.
      the Wave-7-review unauthenticated-exposure gap; plus an opt-in signed webhook replay
      window (`QG_WEBHOOK_MAX_SKEW_S`). Notify is fail-closed and env-only (Slack is the only
      new egress).
+- **DR-0028 — Resolution-verification (sandbox) + packaging — DECIDED & SHIPPED (Wave 9).**
+  The Wave-6 content of DR-0023 decision 6, plus deployment (decision 10). All additive; the
+  frozen surface is byte-locked (guard green); the deterministic keyless gate stays green.
+  1. **Resolution verification is deterministic, keyless, and snapshot-independent.**
+     `orchestrator.verify_resolution` re-reads the operator's **current live signals** (not
+     the frozen incident snapshot) and returns `recovered | not_recovered | inconclusive`,
+     appended to the run's `events`. The incident's error signature (the routes erroring
+     before the fix) is recovered from the **pre-fix window** of those same current signals,
+     so it needs no model and no snapshot. **Read-only sandbox observation — no production
+     mutation** (DR-0001 boundary holds; it never applies or reverts a fix). `recovered`
+     requires the signature routes to have post-fix traffic AND no post-fix errors;
+     `not_recovered` if any signature route still errors; `inconclusive` if the signature
+     isn't visible (log reset/rotated) or there's no post-fix traffic to confirm health.
+  2. **Recovery boundary auto-derived, overridable.** `since` defaults to the most recent
+     deploy after the run started (the presumed fix), else the run's end; an operator can
+     pass it explicitly. The **log signature is authoritative**; error-named metric deltas
+     are recorded as corroborating detail, not a verdict input (kept deterministic/simple).
+  3. **Snapshot reaping is now complete.** `posted` and `rejected` reap the per-incident
+     snapshot in the review gate (alongside the existing `failed` reap in the worker),
+     closing the Wave-8 §5 disk-growth limit. A `pending_review` incident still keeps its
+     snapshot (the review/steer re-run needs it). Reaping at `posted` is safe precisely
+     because resolution verification reads live signals, not the snapshot.
+  4. **New demo fix script.** `demo/chaos/fix_deploy.py` heals `auth.verify_token` and
+     records a fix deploy **without truncating the incident log**, so post-fix healthy
+     traffic is observable and yields `recovered`. `reset.py` stays the full reset (it
+     truncates, so it honestly yields `inconclusive` — no signature to check).
+  5. **Operator surface.** `POST /incidents/{id}/verify-resolution` (bearer-auth,
+     fail-closed, serialized under the per-incident lock) triggers the check and returns the
+     verdict; the verdict is surfaced on `GET /incidents/{id}/status` (JSON) and the HTML
+     page title.
+  6. **Packaging (decision 10).** A non-root `Dockerfile` (`uvicorn quellgeist.service:app`,
+     `/healthz` HEALTHCHECK) + `compose.yml` (demo service + agent service + Ollama, shared
+     `signals`/`agent-data` volumes, `env_file` optional so it starts fail-closed without a
+     `.env`) + `.dockerignore`. `httpx` promoted to a **runtime** dependency (the Slack
+     poster uses it; the dev group alone would `ImportError` in the image). Secrets stay
+     env-only.
+  7. **SECURITY.md** gains a v2 threat-model section (webhook ingress, operator surface,
+     Slack egress, resolution read-only boundary, snapshot isolation, non-root container).
+  8. **Post-review hardening (adversarial multi-agent review; 8 raised, 7 CONFIRMED, fixed).**
+     The confirmed fixes: chaos scripts honor `QG_DEPLOY_LOG` + compose sets it (the culprit
+     deploy now reaches the agent under compose); `recovered` requires EVERY signature route
+     confirmed healthy (a silent route → `inconclusive`) and a routeless signature never claims
+     recovered; a steer re-run that degrades to `failed` reaps its own snapshot (the inline path
+     bypasses the worker reap); compose overrides the demo's healthcheck to `/health`; SECURITY.md
+     "only mutations" corrected to include the authenticated `resolution` audit event; and
+     stronger tests for each. One finding (a weak endpoint `since` test) was refuted and left.
 - **DR-0024–0026** remain deferred (Track B; open at their wave start).

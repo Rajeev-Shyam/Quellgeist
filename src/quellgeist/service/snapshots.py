@@ -57,8 +57,10 @@ def snapshot_signals(
 
 def discard_snapshot(dest_dir: str | Path) -> None:
     """Remove a per-incident snapshot dir once it is no longer needed. Called for
-    TERMINAL incidents (a 'failed' run here; Wave 8 adds 'posted'/'rejected'). A
+    TERMINAL incidents: a 'failed' run (worker) and — since Wave 9 — 'posted'/'rejected'
+    (the review gate), closing the disk-growth limit carried out of Wave 8. A
     'pending_review' incident KEEPS its snapshot — the review gate / steer re-run reads
-    it — so the dir is not reaped until the incident actually closes. Best-effort:
-    a cleanup failure must never crash the caller."""
+    it — so the dir is not reaped until the incident actually closes. Resolution
+    verification reads LIVE signals, not the snapshot, so reaping at 'posted' is safe.
+    Best-effort: a cleanup failure must never crash the caller."""
     shutil.rmtree(Path(dest_dir), ignore_errors=True)

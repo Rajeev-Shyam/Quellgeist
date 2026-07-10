@@ -13,11 +13,19 @@ Wave 7 ships ``investigate`` (run → fabrication check → persist → ``pendin
 from __future__ import annotations
 
 from quellgeist.orchestrator.investigate import InvestigationResult, investigate
+from quellgeist.orchestrator.resolution import (
+    ResolutionError,
+    ResolutionVerdict,
+    verify_resolution,
+)
 from quellgeist.orchestrator.tools_factory import incident_tools, read_signals
 
 __all__ = [
     "InvestigationResult",
+    "ResolutionError",
+    "ResolutionVerdict",
     "incident_tools",
     "investigate",
     "read_signals",
+    "verify_resolution",
 ]
