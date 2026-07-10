@@ -204,6 +204,12 @@ def set_review(
         )
 
 
+def get_diagnosis(conn: sqlite3.Connection, run_id: str) -> dict | None:
+    """The diagnoses row for a run (``diagnosis_json`` / ``verified_json`` / review fields)."""
+    row = conn.execute("SELECT * FROM diagnoses WHERE run_id = ?", (run_id,)).fetchone()
+    return dict(row) if row else None
+
+
 # --- events (append-only audit log) ---------------------------------------------
 
 

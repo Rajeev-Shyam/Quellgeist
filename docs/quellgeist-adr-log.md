@@ -710,5 +710,20 @@ fine-tune must still report the frozen number for comparability.
 - **DR-0025 — Structure-varied corpus + public-postmortem out-of-structure holdout** (skeleton
   parameters; curation/attribution/copyright rules; measurement discipline vs the frozen holdout).
 - **DR-0026 — `resource_exhaustion` trajectory-mix** (targeted training data; optional).
-- **DR-0027 — HITL protocol + resumable orchestration** (hint-injection points; review-gate
-  state machine; how it stays off the measured loop).
+- **DR-0027 — HITL protocol + resumable orchestration — DECIDED & SHIPPED (Wave 8).**
+  1. **Verifier is load-bearing in the live path.** `investigate()` runs the base verifier
+     after the fabrication check; the review gate refuses to post an unverified run. The
+     verifier provider is pinned separately (`QG_VERIFIER_MODEL`, `None` unless distinct from
+     `QG_MODEL` — the tuned model never verifies itself, DR-0016).
+  2. **Hint injection stays off the frozen loop.** A `HintProvider` wrapper adds the operator
+     hint as one extra message on the first `complete()`; `agent/loop.py` and every F4 string
+     are untouched (frozen guard green). Between-steps injection deferred (stretch) to avoid
+     touching the `Observation from …` format.
+  3. **Review-gate state machine:** `pending_review → approved|steered|rejected → posted`,
+     every transition an `events` row; approve is **fail-closed** (refuses fabricated OR
+     unverified); steer re-runs `investigate` over the same snapshot with the steer as a hint.
+  4. **Operator surface is authenticated** (bearer `QG_OPERATOR_TOKEN`, fail-closed) — closes
+     the Wave-7-review unauthenticated-exposure gap; plus an opt-in signed webhook replay
+     window (`QG_WEBHOOK_MAX_SKEW_S`). Notify is fail-closed and env-only (Slack is the only
+     new egress).
+- **DR-0024–0026** remain deferred (Track B; open at their wave start).
