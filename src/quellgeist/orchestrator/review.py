@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from quellgeist import notify
 from quellgeist.agent.schema import Diagnosis
 from quellgeist.orchestrator.investigate import investigate
+from quellgeist.service.snapshots import discard_snapshot
 from quellgeist.store import connect, dao
 
 if TYPE_CHECKING:
@@ -80,6 +81,9 @@ def apply_review(
                 detail_json=json.dumps({"reviewed_by": reviewed_by}),
             )
             dao.set_incident_status(conn, incident_id, "rejected")
+            # Terminal: nothing more reads this snapshot (Wave 9 completes reaping —
+            # resolution verification reads live signals, not the frozen snapshot).
+            discard_snapshot(incident.signals_ref)
             return {
                 "incident_id": incident_id,
                 "status": "rejected",
@@ -136,6 +140,13 @@ def apply_review(
             steered = dao.get_incident(conn, incident_id)
         finally:
             conn.close()
+        # The steer re-run runs INLINE here, not via the worker pool, so the worker's
+        # terminal-'failed' snapshot reap never fires for it. Reap here when the re-run
+        # degraded to persisted 'failed' (gated on the PERSISTED status, mirroring the
+        # worker) so a steer-then-fail doesn't orphan the snapshot — completing Wave 9's
+        # reaping for every terminal path. A pending_review re-run KEEPS its snapshot.
+        if steered and steered.status == "failed":
+            discard_snapshot(steered.signals_ref)
         return {
             "incident_id": incident_id,
             "status": steered.status if steered else "pending_review",
@@ -164,6 +175,9 @@ def apply_review(
         dao.set_incident_status(conn, incident_id, "posted")
     finally:
         conn.close()
+    # Terminal: reap the snapshot now that the diagnosis is posted. Resolution
+    # verification (Wave 9) re-reads the operator's LIVE signals, so it needs no snapshot.
+    discard_snapshot(incident.signals_ref)
     return {
         "incident_id": incident_id,
         "status": "posted",

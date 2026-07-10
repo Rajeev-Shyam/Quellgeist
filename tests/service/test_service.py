@@ -835,6 +835,7 @@ def test_steer_reports_failed_when_rerun_degrades(tmp_path, monkeypatch):
     with TestClient(create_app(cfg)) as client:
         assert _post(client, {"id": "c-1"}).status_code == 202
         _wait_status(client, "c-1", "pending_review")
+        assert (Path(cfg.signals_dir) / "c-1").exists()
 
         def _boom(*a, **k):
             raise RuntimeError("db down")
@@ -842,6 +843,9 @@ def test_steer_reports_failed_when_rerun_degrades(tmp_path, monkeypatch):
         monkeypatch.setattr("quellgeist.store.dao.record_run", _boom)
         r = _post_review(client, "c-1", {"decision": "steer", "steer_text": "x"})
         assert r.json()["status"] == "failed"
+        # Wave 9: the inline steer re-run bypasses the worker's reap, so apply_review reaps
+        # the snapshot itself when the re-run degrades to terminal 'failed' (no orphan).
+        assert not (Path(cfg.signals_dir) / "c-1").exists()
 
 
 def test_get_incident_page_is_html(tmp_path):
@@ -884,3 +888,99 @@ def test_replay_window_requires_fresh_signed_timestamp(tmp_path):
 def test_replay_disabled_ignores_timestamp(tmp_path):
     with TestClient(create_app(_config(tmp_path))) as client:  # skew 0 (default)
         assert _post(client, {"id": "rp-4"}).status_code == 202
+
+
+# ===================== Wave 9 — reaping + resolution verification =================
+
+
+def _snap_dir(cfg, iid):
+    return Path(cfg.signals_dir) / iid
+
+
+def test_pending_review_keeps_snapshot_then_approve_reaps_it(tmp_path):
+    cfg = _config(tmp_path, verifier_supported=True, slack_poster=RecordingPoster())
+    with TestClient(create_app(cfg)) as client:
+        assert _post(client, {"id": "w9-a"}).status_code == 202
+        _wait_status(client, "w9-a", "pending_review")
+        assert _snap_dir(cfg, "w9-a").exists()  # kept for review/steer
+        assert (
+            _post_review(client, "w9-a", {"decision": "approve"}).json()["status"]
+            == "posted"
+        )
+        assert not _snap_dir(cfg, "w9-a").exists()  # reaped on posted (Wave 9)
+
+
+def test_reject_reaps_snapshot(tmp_path):
+    cfg = _config(tmp_path, verifier_supported=True, slack_poster=RecordingPoster())
+    with TestClient(create_app(cfg)) as client:
+        assert _post(client, {"id": "w9-r"}).status_code == 202
+        _wait_status(client, "w9-r", "pending_review")
+        assert (
+            _post_review(client, "w9-r", {"decision": "reject"}).json()["status"]
+            == "rejected"
+        )
+        assert not _snap_dir(cfg, "w9-r").exists()  # reaped on rejected (Wave 9)
+
+
+def _write_recovery_signals(tmp_path):
+    """Overwrite the live log/deploy files to look like a healed service: the incident
+    error on /login pre-fix, then healthy /login traffic + a fix deploy post-fix."""
+    (tmp_path / "logs.jsonl").write_text(
+        json.dumps(
+            {
+                "id": 0,
+                "ts": "2026-07-09T10:00:02Z",
+                "level": "ERROR",
+                "route": "/login",
+                "status": 500,
+            }
+        )
+        + "\n"
+        + json.dumps(
+            {
+                "id": 1,
+                "ts": "2027-01-01T00:00:00Z",
+                "level": "INFO",
+                "route": "/login",
+                "status": 200,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "deploys.json").write_text(
+        json.dumps([{"sha": "f1c2d3e", "ts": "2027-01-01T00:00:00Z", "msg": "fix"}]),
+        encoding="utf-8",
+    )
+
+
+def test_verify_resolution_endpoint_returns_and_surfaces_verdict(tmp_path):
+    cfg = _config(tmp_path, verifier_supported=True)
+    with TestClient(create_app(cfg)) as client:
+        assert _post(client, {"id": "w9-v"}).status_code == 202
+        _wait_status(client, "w9-v", "pending_review")
+        _write_recovery_signals(tmp_path)  # operator applied the fix
+        r = client.post(
+            "/incidents/w9-v/verify-resolution",
+            json={"since": "2026-12-01T00:00:00Z"},
+            headers=_op(),
+        )
+        assert r.status_code == 200
+        assert r.json()["verdict"] == "recovered"
+        # surfaced on the JSON status endpoint
+        assert _status(client, "w9-v").json()["resolution"]["verdict"] == "recovered"
+        # and in the HTML page title
+        page = client.get("/incidents/w9-v", headers=_op())
+        assert "resolution: recovered" in page.text
+
+
+def test_verify_resolution_requires_auth_and_maps_errors(tmp_path):
+    cfg = _config(tmp_path, verifier_supported=True)
+    with TestClient(create_app(cfg)) as client:
+        # unauthenticated
+        assert client.post("/incidents/x/verify-resolution").status_code == 401
+        # authenticated but unknown incident -> 404 from ResolutionError
+        assert (
+            client.post("/incidents/ghost/verify-resolution", headers=_op()).status_code
+            == 404
+        )

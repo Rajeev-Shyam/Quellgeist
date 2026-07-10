@@ -8,12 +8,15 @@ the /login 500s you'll generate next. Idempotent. Runs from the repo root.
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 _DEMO = Path(__file__).resolve().parents[1]  # .../demo
 _FLAG = _DEMO / ".bad_deploy"
-_DEPLOY_LOG = _DEMO / "deploy_log.json"
+# Honor QG_DEPLOY_LOG so the deploy signal lands where the agent reads it (the shared
+# volume under compose); defaults to the local demo file for the plain CLI demo.
+_DEPLOY_LOG = Path(os.getenv("QG_DEPLOY_LOG", _DEMO / "deploy_log.json"))
 _FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
