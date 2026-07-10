@@ -73,9 +73,13 @@ def incidents_by_status(
     work stranded in the in-memory queue by a restart/crash), oldest first."""
     if not statuses:
         return []
+    # `placeholders` is only '?' separators; the status VALUES are bound via `statuses`,
+    # so this is a parameterized query, not string-interpolated data (bandit B608 is a
+    # false positive here — a dynamic-length IN-clause is the one case that needs an
+    # f-string for the placeholders).
     placeholders = ",".join("?" for _ in statuses)
     rows = conn.execute(
-        f"SELECT * FROM incidents WHERE status IN ({placeholders}) ORDER BY received_ts",
+        f"SELECT * FROM incidents WHERE status IN ({placeholders}) ORDER BY received_ts",  # nosec B608
         statuses,
     ).fetchall()
     return [
