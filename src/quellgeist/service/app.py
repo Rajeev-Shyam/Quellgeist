@@ -28,6 +28,7 @@ import json
 import re
 import sqlite3
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -38,6 +39,7 @@ from quellgeist.agent.schema import Diagnosis
 from quellgeist.clock import now_ts
 from quellgeist.notify import render_html
 from quellgeist.observability import configure_logging, get_logger
+from quellgeist.orchestrator.resolution import ResolutionError, verify_resolution
 from quellgeist.orchestrator.review import ReviewError, apply_review
 from quellgeist.service.config import ServiceConfig
 from quellgeist.service.queue import WorkerPool
@@ -125,10 +127,17 @@ def _incident_status(config: ServiceConfig, incident_id: str) -> dict | None:
             return None
         runs = dao.list_runs(conn, incident_id)
         latest = runs[-1] if runs else None
+        res_ev = dao.latest_event(conn, incident_id, "resolution")
+        resolution = (
+            json.loads(res_ev["detail_json"])
+            if res_ev and res_ev.get("detail_json")
+            else None
+        )
         return {
             "incident_id": inc.id,
             "status": inc.status,
             "runs": len(runs),
+            "resolution": resolution,
             "latest_run": (
                 {
                     "id": latest.id,
@@ -160,6 +169,7 @@ def _incident_page(config: ServiceConfig, incident_id: str) -> str | None:
         runs = dao.list_runs(conn, incident_id)
         latest = runs[-1] if runs else None
         diag_row = dao.get_diagnosis(conn, latest.id) if latest else None
+        res_ev = dao.latest_event(conn, incident_id, "resolution")
     finally:
         conn.close()
     if diag_row and diag_row.get("verified_json"):
@@ -173,6 +183,11 @@ def _incident_page(config: ServiceConfig, incident_id: str) -> str | None:
             abstained=True, abstention_reason=f"no run yet (status: {inc.status})"
         )
         title = f"Incident {incident_id} — {inc.status}"
+    if res_ev and res_ev.get("detail_json"):
+        try:
+            title += f" · resolution: {json.loads(res_ev['detail_json'])['verdict']}"
+        except (json.JSONDecodeError, KeyError):
+            pass
     return render_html(diagnosis, title=title)
 
 
@@ -412,5 +427,49 @@ def create_app(config: ServiceConfig) -> FastAPI:
             "incident_reviewed", incident=incident_id, decision=payload.get("decision")
         )
         return JSONResponse(out)
+
+    @app.post("/incidents/{incident_id}/verify-resolution")
+    async def post_verify_resolution(
+        incident_id: str, request: Request
+    ) -> JSONResponse:
+        """Sandbox resolution check (Wave 9): after a fix is applied, re-read the LIVE
+        signals and decide recovered/not_recovered/inconclusive. Read-only (no prod
+        mutation, DR-0001). Optional body: ``{"since": <ts>, "run_id": <id>}``."""
+        _require_operator(request)
+        body = await _read_capped_body(request, config.max_body_bytes)
+        payload: dict = {}
+        if body:
+            try:
+                payload = json.loads(body)
+            except json.JSONDecodeError as e:
+                raise HTTPException(status_code=400, detail="invalid JSON body") from e
+            if not isinstance(payload, dict):
+                raise HTTPException(
+                    status_code=400, detail="body must be a JSON object"
+                )
+        since, run_id = payload.get("since"), payload.get("run_id")
+        if since is not None and not isinstance(since, str):
+            raise HTTPException(status_code=400, detail="since must be a string")
+        if run_id is not None and not isinstance(run_id, str):
+            raise HTTPException(status_code=400, detail="run_id must be a string")
+        try:
+            # Serialize under the same per-incident lock as review/ingress so a resolution
+            # check can't interleave with a concurrent steer re-run on the same incident.
+            async with _incident_lock(incident_id):
+                verdict = await asyncio.to_thread(
+                    verify_resolution,
+                    incident_id,
+                    config=config,
+                    run_id=run_id,
+                    since=since,
+                )
+        except ResolutionError as e:
+            raise HTTPException(status_code=e.status_code, detail=str(e)) from e
+        log.info(
+            "incident_resolution_checked",
+            incident=incident_id,
+            verdict=verdict.verdict,
+        )
+        return JSONResponse(asdict(verdict))
 
     return app

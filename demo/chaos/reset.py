@@ -13,7 +13,9 @@ from pathlib import Path
 
 _DEMO = Path(__file__).resolve().parents[1]
 _FLAG = _DEMO / ".bad_deploy"
-_DEPLOY_LOG = _DEMO / "deploy_log.json"
+# Same env override as the other chaos scripts, so a reset clears the deploy log the agent
+# actually read (the shared volume under compose), not just the local demo copy.
+_DEPLOY_LOG = Path(os.getenv("QG_DEPLOY_LOG", _DEMO / "deploy_log.json"))
 _INCIDENT_LOG = Path(os.getenv("QG_LOG_PATH", _DEMO / "incident_logs.jsonl"))
 
 

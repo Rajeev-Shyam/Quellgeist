@@ -1,0 +1,73 @@
+# Quellgeist v2 local stack (Wave 9, T9.2; DR-0028). One command brings up the whole
+# 3-minute demo: the breakable toy service, the agent service, and a local Ollama reasoner.
+#
+#   docker compose up --build
+#   docker compose exec ollama ollama pull qwen3:4b-instruct-2507-q4_K_M   # first run
+#
+# Secrets are env-only (public repo): put QG_WEBHOOK_SECRET, QG_OPERATOR_TOKEN,
+# QG_SLACK_WEBHOOK_URL (and QG_VERIFIER_MODEL, which MUST differ from QG_MODEL for the
+# review gate to post — DR-0016) in a local `.env` (gitignored). The stack still starts
+# without one; the service is fail-closed until the secrets are set.
+name: quellgeist
+
+services:
+  # Local reasoner. The tuned GGUF is not published (a plain pull gets the base model);
+  # for a real diagnosis, `ollama create` your fine-tuned artifact and point QG_MODEL at it.
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+
+  # The intentionally-breakable toy service. Break it with the chaos scripts, then heal it:
+  #   docker compose exec demo python -m demo.chaos.bad_deploy
+  #   docker compose exec demo python -m demo.chaos.fix_deploy
+  # It writes its structured log into the shared `signals` volume the agent reads.
+  demo:
+    build: .
+    command: ["uvicorn", "demo.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      # The demo writes BOTH its incident log and (via the chaos scripts) its deploy log
+      # into the shared volume, so the agent's per-incident snapshot picks them up.
+      QG_LOG_PATH: /signals/incident_logs.jsonl
+      QG_DEPLOY_LOG: /signals/deploy_log.json
+    volumes:
+      - signals:/signals
+    ports:
+      - "8001:8000"
+    # The demo exposes /health, not the agent's /healthz — override the image's baked probe.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  # The agent service: signed webhook -> investigate -> persist -> HITL review -> post.
+  agent:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      QG_MODEL: ollama_chat/qwen3:4b-instruct-2507-q4_K_M
+      OLLAMA_API_BASE: http://ollama:11434
+      QG_LOG_PATH: /signals/incident_logs.jsonl
+      QG_DEPLOY_LOG: /signals/deploy_log.json
+      QG_METRICS_PATH: /signals/metrics.json
+      QG_DB_PATH: /data/quellgeist.db
+      QG_SIGNALS_DIR: /data/signals
+      QG_HTML_DIR: /data/postmortems
+    volumes:
+      - signals:/signals
+      - agent-data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ollama
+
+volumes:
+  signals: # shared signal drop (demo writes, agent reads)
+  agent-data: # SQLite store + snapshots + postmortem HTML
+  ollama: # model blobs

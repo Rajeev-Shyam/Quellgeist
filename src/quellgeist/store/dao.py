@@ -234,3 +234,14 @@ def list_events(conn: sqlite3.Connection, incident_id: str) -> list[dict]:
         "SELECT * FROM events WHERE incident_id = ? ORDER BY id", (incident_id,)
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def latest_event(conn: sqlite3.Connection, incident_id: str, kind: str) -> dict | None:
+    """The most recent ``events`` row of ``kind`` for an incident (e.g. the latest
+    ``resolution`` verdict), or None. Used to surface a verdict on the operator views.
+    """
+    row = conn.execute(
+        "SELECT * FROM events WHERE incident_id = ? AND kind = ? ORDER BY id DESC LIMIT 1",
+        (incident_id, kind),
+    ).fetchone()
+    return dict(row) if row else None
