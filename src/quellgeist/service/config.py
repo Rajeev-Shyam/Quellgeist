@@ -30,6 +30,26 @@ class ServiceConfig:
     # test seam: inject a scripted provider; None => a real LiteLLM provider
     provider_factory: Callable[[], Provider] | None = None
 
+    # --- Wave 8: verifier (T8.0), notify (T8.1), operator surface + auth (T8.2), replay ---
+    # Verifier is pinned SEPARATELY from the reasoner (DR-0016: the tuned model must not
+    # verify itself). Empty / equal-to-`model` => no verifier => runs stay 'unverified' and
+    # the review gate refuses to post them (fail-closed).
+    verifier_model: str = ""  # QG_VERIFIER_MODEL
+    verifier_provider_factory: Callable[[], Provider] | None = None  # test seam
+    # Slack: the ONLY new outbound egress, scoped to this webhook URL (env-only). Empty =>
+    # Slack posting is skipped (the HTML postmortem is still written).
+    slack_webhook_url: str = ""  # QG_SLACK_WEBHOOK_URL
+    slack_poster: Callable[[str, dict], None] | None = (
+        None  # test seam; None => real httpx
+    )
+    html_dir: str = (
+        "./var/postmortems"  # where an approved postmortem's HTML is written
+    )
+    # Operator surface auth: empty => the operator endpoints are fail-closed (rejected).
+    operator_token: str = ""  # QG_OPERATOR_TOKEN
+    # Replay bound: >0 => require a fresh X-Quellgeist-Timestamp within this many seconds.
+    webhook_max_skew_s: int = 0  # QG_WEBHOOK_MAX_SKEW_S
+
     def __post_init__(self) -> None:
         # Fail fast on misconfiguration rather than starting a subtly-broken service:
         # num_workers<=0 -> a "healthy" pool that processes nothing; queue_maxsize<=0 ->
@@ -48,6 +68,19 @@ class ServiceConfig:
         from quellgeist.agent.providers import LiteLLMProvider
 
         return LiteLLMProvider(model=self.model)
+
+    def make_verifier_provider(self) -> Provider | None:
+        """Build the verifier provider, pinned SEPARATELY from the reasoner. DR-0016: the
+        tuned model must NEVER verify itself, so only return a provider when a DISTINCT
+        model (or a test factory) is configured; otherwise None -> the run is 'unverified'
+        and the review gate refuses to post it (fail-closed)."""
+        if self.verifier_provider_factory is not None:
+            return self.verifier_provider_factory()
+        if not self.verifier_model or self.verifier_model == self.model:
+            return None
+        from quellgeist.agent.providers import LiteLLMProvider
+
+        return LiteLLMProvider(model=self.verifier_model)
 
     @classmethod
     def from_env(cls) -> ServiceConfig:
@@ -70,4 +103,9 @@ class ServiceConfig:
             log_path=os.environ.get("QG_LOG_PATH", "demo/incident_logs.jsonl"),
             deploy_path=os.environ.get("QG_DEPLOY_LOG", "demo/deploy_log.json"),
             metrics_path=os.environ.get("QG_METRICS_PATH", "demo/metrics.json"),
+            verifier_model=os.environ.get("QG_VERIFIER_MODEL", ""),
+            slack_webhook_url=os.environ.get("QG_SLACK_WEBHOOK_URL", ""),
+            html_dir=os.environ.get("QG_HTML_DIR", "./var/postmortems"),
+            operator_token=os.environ.get("QG_OPERATOR_TOKEN", ""),
+            webhook_max_skew_s=_int("QG_WEBHOOK_MAX_SKEW_S", 0),
         )

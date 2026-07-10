@@ -23,6 +23,7 @@ provider); ``quellgeist.service:app`` builds the env instance lazily (see ``__in
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import re
 import sqlite3
@@ -30,17 +31,22 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from quellgeist import store
+from quellgeist.agent.schema import Diagnosis
 from quellgeist.clock import now_ts
+from quellgeist.notify import render_html
 from quellgeist.observability import configure_logging, get_logger
+from quellgeist.orchestrator.review import ReviewError, apply_review
 from quellgeist.service.config import ServiceConfig
 from quellgeist.service.queue import WorkerPool
-from quellgeist.service.security import verify_signature
+from quellgeist.service.security import timestamp_within_skew, verify_signature
 from quellgeist.service.snapshots import discard_snapshot, snapshot_signals
 from quellgeist.store import dao
 from quellgeist.store.models import Incident
+
+_TS_HEADER = "x-quellgeist-timestamp"
 
 _SIG_HEADER = "x-quellgeist-signature"
 _INCIDENT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
@@ -140,6 +146,34 @@ def _incident_status(config: ServiceConfig, incident_id: str) -> dict | None:
         }
     finally:
         conn.close()
+
+
+def _incident_page(config: ServiceConfig, incident_id: str) -> str | None:
+    """Render the operator HTML page for an incident: the POST-VERIFIER diagnosis (or the
+    raw one, clearly marked UNVERIFIED and not-postable), titled with the incident status.
+    Returns None for an unknown incident (-> 404)."""
+    conn = store.connect(config.db_path)
+    try:
+        inc = dao.get_incident(conn, incident_id)
+        if inc is None:
+            return None
+        runs = dao.list_runs(conn, incident_id)
+        latest = runs[-1] if runs else None
+        diag_row = dao.get_diagnosis(conn, latest.id) if latest else None
+    finally:
+        conn.close()
+    if diag_row and diag_row.get("verified_json"):
+        diagnosis = Diagnosis.model_validate_json(diag_row["verified_json"])
+        title = f"Incident {incident_id} — {inc.status} (verified)"
+    elif diag_row and diag_row.get("diagnosis_json"):
+        diagnosis = Diagnosis.model_validate_json(diag_row["diagnosis_json"])
+        title = f"Incident {incident_id} — {inc.status} (UNVERIFIED — not postable)"
+    else:
+        diagnosis = Diagnosis(
+            abstained=True, abstention_reason=f"no run yet (status: {inc.status})"
+        )
+        title = f"Incident {incident_id} — {inc.status}"
+    return render_html(diagnosis, title=title)
 
 
 async def _read_capped_body(request: Request, cap: int) -> bytes:
@@ -261,8 +295,16 @@ def create_app(config: ServiceConfig) -> FastAPI:
         if cl is not None and cl.isdigit() and int(cl) > config.max_body_bytes:
             raise HTTPException(status_code=413, detail="request body too large")
         body = await _read_capped_body(request, config.max_body_bytes)
+        # Replay window (opt-in): when enabled, require a fresh X-Quellgeist-Timestamp and
+        # bind it into the signed material so a captured request can't be re-timestamped.
+        ts = request.headers.get(_TS_HEADER)
+        if config.webhook_max_skew_s > 0 and not timestamp_within_skew(
+            ts, config.webhook_max_skew_s
+        ):
+            raise HTTPException(status_code=401, detail="stale or missing timestamp")
+        signed_ts = ts if config.webhook_max_skew_s > 0 else None
         if not verify_signature(
-            config.webhook_secret, body, request.headers.get(_SIG_HEADER)
+            config.webhook_secret, body, request.headers.get(_SIG_HEADER), signed_ts
         ):
             raise HTTPException(status_code=401, detail="invalid or missing signature")
         try:
@@ -301,11 +343,74 @@ def create_app(config: ServiceConfig) -> FastAPI:
                 log.info("incident_received", incident=incident_id)
         return JSONResponse(out, status_code=status_code)
 
-    @app.get("/incidents/{incident_id}")
-    def get_incident_ep(incident_id: str) -> dict:  # sync -> runs in a threadpool
-        status = _incident_status(config, incident_id)
+    def _require_operator(request: Request) -> None:
+        """Fail-closed bearer auth for the operator surface. An unset QG_OPERATOR_TOKEN
+        rejects everything — this surface exposes run metadata AND the post action, so it
+        must never be open by default (public repo)."""
+        token = config.operator_token
+        if not token:
+            raise HTTPException(
+                status_code=503, detail="operator surface not configured"
+            )
+        header = request.headers.get("authorization", "")
+        prefix = "Bearer "
+        presented = header[len(prefix) :] if header.startswith(prefix) else ""
+        if not presented or not hmac.compare_digest(presented, token):
+            raise HTTPException(
+                status_code=401, detail="invalid or missing operator token"
+            )
+
+    @app.get("/incidents/{incident_id}", response_class=HTMLResponse)
+    async def get_incident_page(incident_id: str, request: Request) -> HTMLResponse:
+        _require_operator(request)
+        page = await asyncio.to_thread(_incident_page, config, incident_id)
+        if page is None:
+            raise HTTPException(status_code=404, detail="unknown incident")
+        return HTMLResponse(page)
+
+    @app.get("/incidents/{incident_id}/status")
+    async def get_incident_status(incident_id: str, request: Request) -> dict:
+        _require_operator(request)
+        status = await asyncio.to_thread(_incident_status, config, incident_id)
         if status is None:
             raise HTTPException(status_code=404, detail="unknown incident")
         return status
+
+    @app.post("/incidents/{incident_id}/review")
+    async def post_review(incident_id: str, request: Request) -> JSONResponse:
+        _require_operator(request)
+        try:
+            payload = json.loads(
+                await _read_capped_body(request, config.max_body_bytes)
+            )
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail="invalid JSON body") from e
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="body must be a JSON object")
+        steer_text, reviewed_by = payload.get("steer_text"), payload.get("reviewed_by")
+        if steer_text is not None and not isinstance(steer_text, str):
+            raise HTTPException(status_code=400, detail="steer_text must be a string")
+        if reviewed_by is not None and not isinstance(reviewed_by, str):
+            raise HTTPException(status_code=400, detail="reviewed_by must be a string")
+        page_url = f"{str(request.base_url).rstrip('/')}/incidents/{incident_id}"
+        try:
+            # Serialize reviews per incident (same lock the ingress uses) so two concurrent
+            # approves can't both pass the pending_review guard and double-post to Slack.
+            async with _incident_lock(incident_id):
+                out = await asyncio.to_thread(
+                    apply_review,
+                    incident_id,
+                    decision=payload.get("decision"),
+                    config=config,
+                    steer_text=steer_text,
+                    reviewed_by=reviewed_by,
+                    page_url=page_url,
+                )
+        except ReviewError as e:
+            raise HTTPException(status_code=e.status_code, detail=str(e)) from e
+        log.info(
+            "incident_reviewed", incident=incident_id, decision=payload.get("decision")
+        )
+        return JSONResponse(out)
 
     return app

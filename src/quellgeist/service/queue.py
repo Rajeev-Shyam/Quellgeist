@@ -106,6 +106,7 @@ class WorkerPool:
             db_path=self.config.db_path,
             model=self.config.model,
             hint=incident.hint,
+            verifier_provider=self.config.make_verifier_provider(),
             now=incident.received_ts,
         )
         # Reap only when the incident is ACTUALLY persisted terminal-'failed'. The

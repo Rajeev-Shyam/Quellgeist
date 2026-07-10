@@ -29,6 +29,7 @@ from quellgeist.agent.citations import check_fabrication
 from quellgeist.agent.loop import LoopResult, run_loop
 from quellgeist.agent.providers import Provider
 from quellgeist.agent.schema import Diagnosis
+from quellgeist.agent.verifier import verify
 from quellgeist.clock import now_ts
 from quellgeist.observability import (
     get_logger,
@@ -36,6 +37,7 @@ from quellgeist.observability import (
     run_context,
     summarize_usage,
 )
+from quellgeist.orchestrator.hint import HintProvider
 from quellgeist.orchestrator.tools_factory import incident_tools, read_signals
 from quellgeist.store import connect, dao
 from quellgeist.store.models import RunRecord
@@ -48,6 +50,10 @@ class InvestigationResult:
     run: RunRecord
     diagnosis: Diagnosis
     fabricated: list[tuple[str, object]]  # empty = clean
+    # The post-verifier diagnosis (unsupported hypotheses dropped, may be forced-abstained).
+    # None => the run was NOT verified (no verifier pinned / verifier unavailable); the
+    # review gate refuses to post an unverified run (fail-closed).
+    verified: Diagnosis | None = None
 
 
 def _trace_json(result: LoopResult) -> str:
@@ -61,6 +67,29 @@ def _trace_json(result: LoopResult) -> str:
         },
         default=str,
     )
+
+
+def _run_verifier(
+    verifier_provider: Provider | None,
+    diagnosis: Diagnosis,
+    logs: list,
+    commits: list,
+    metrics: list,
+    *,
+    incident_id: str,
+) -> Diagnosis | None:
+    """Run the base verifier (T8.0) with a SEPARATELY-pinned provider (DR-0016). Returns the
+    verified diagnosis (may be forced-abstained) or None when no verifier is pinned. A
+    verifier outage is logged and yields None (unverified) rather than failing the whole
+    run — the run stays reviewable, and the gate still refuses to post an unverified run.
+    """
+    if verifier_provider is None:
+        return None
+    try:
+        return verify(diagnosis, logs, commits, verifier_provider, metrics).diagnosis
+    except Exception as ve:  # noqa: BLE001 - service resilience: record, don't post
+        _log.warning("verifier_unavailable", incident=incident_id, error=str(ve))
+        return None
 
 
 def _persist_failed(
@@ -121,14 +150,23 @@ def investigate(
     db_path: str | Path,
     model: str,
     hint: str | None = None,
+    verifier_provider: Provider | None = None,
     now: str | None = None,
     max_steps: int = 8,
 ) -> InvestigationResult:
     """Run one investigation over an isolated snapshot and persist it. Opens its own
-    store connection in the calling (worker) thread."""
+    store connection in the calling (worker) thread.
+
+    ``hint`` (if given) is injected as one extra operator message via ``HintProvider``
+    (T8.3) — the frozen loop is untouched. ``verifier_provider`` (if given, pinned
+    separately from the reasoner) runs the base verifier (T8.0) after the fabrication
+    check; the verified diagnosis is persisted in ``diagnoses.verified_json`` and is the
+    only artifact the review gate will post (fail-closed)."""
     run_id = new_run_id()
     started = now_ts()
     now = now or started
+    if hint:
+        provider = HintProvider(provider, hint)
     conn = connect(db_path)
     diagnosis: Diagnosis | None = None
     try:
@@ -151,6 +189,14 @@ def investigate(
                 fabricated = sorted(
                     check_fabrication(diagnosis, logs, commits, metrics).fabricated,
                     key=repr,
+                )
+                verified = _run_verifier(
+                    verifier_provider,
+                    diagnosis,
+                    logs,
+                    commits,
+                    metrics,
+                    incident_id=incident_id,
                 )
                 usage = summarize_usage(provider)
                 outcome = "abstained" if diagnosis.abstained else "diagnosed"
@@ -177,6 +223,7 @@ def investigate(
                     run_id,
                     summary=diagnosis.summary,
                     diagnosis_json=diagnosis.model_dump_json(),
+                    verified_json=verified.model_dump_json() if verified else None,
                 )
                 dao.record_evidence(
                     conn,
@@ -193,7 +240,10 @@ def investigate(
                     outcome,
                     run_id=run_id,
                     detail_json=json.dumps(
-                        {"fabricated": [list(h) for h in fabricated]}
+                        {
+                            "fabricated": [list(h) for h in fabricated],
+                            "verified": verified is not None,
+                        }
                     ),
                 )
                 dao.set_incident_status(conn, incident_id, "pending_review")
@@ -203,9 +253,10 @@ def investigate(
                     outcome=outcome,
                     steps=result.steps,
                     fabricated=len(fabricated),
+                    verified=verified is not None,
                     prompt_tokens=usage.prompt_tokens,
                 )
-                return InvestigationResult(run, diagnosis, fabricated)
+                return InvestigationResult(run, diagnosis, fabricated, verified)
             except Exception as exc:  # noqa: BLE001 - degrade to a persisted failure
                 _log.warning(
                     "investigation_failed", incident=incident_id, error=str(exc)

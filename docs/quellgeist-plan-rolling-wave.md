@@ -454,7 +454,35 @@ config precedence, usage captured on failed runs, `_now` de-duplicated, lazy `ap
 - **Verify the combined v1+v2 launch decision** at the boundary (v1 Wave-5 launch tasks are
   still user-gated).
 
-T8 (notify + review gate) opens next with DR-0027 (fold in T8.0).
+### Wave 8 — Output + HITL *(SHIPPED; DR-0027)*
+
+Additive only; frozen surface byte-locked (guard green); deterministic keyless gate green.
+
+- **T8.0 — verifier in the live path.** `investigate()` runs `agent.verifier.verify` after
+  the fabrication check with a **separately-pinned** provider (`QG_VERIFIER_MODEL`, never
+  `QG_MODEL` — DR-0016; `ServiceConfig.make_verifier_provider` returns `None` when the model
+  is unset or equals the reasoner). The verified diagnosis is persisted in
+  `diagnoses.verified_json` and is the ONLY postable artifact. A verifier outage leaves the
+  run *unverified* (recorded, reviewable, not postable) rather than failing it.
+- **T8.1 — `notify`, fail-closed.** `notify.publish` writes the postmortem HTML (reuses
+  `output.postmortem.render_postmortem_html`) and posts to Slack (`QG_SLACK_WEBHOOK_URL`,
+  injectable poster seam); refuses a fabricated diagnosis (`PublishRefused`).
+- **T8.2 — review gate + operator surface.** `orchestrator.review.apply_review` drives
+  `pending_review → approved|steered|rejected → posted`, auditing every transition in
+  `events`; approve→post (fail-closed: refuses fabricated OR unverified), reject→nothing,
+  steer→re-run `investigate` with the steer as a hint. `GET /incidents/{id}` is the HTML page,
+  `POST /incidents/{id}/review` drives the gate — both **bearer-auth-gated**
+  (`QG_OPERATOR_TOKEN`, fail-closed); JSON polling moved to `GET /incidents/{id}/status`.
+- **T8.3 — hint at trigger.** `orchestrator.hint.HintProvider` wraps the run provider and
+  injects the operator hint as one extra message on the first `complete()` — the frozen loop
+  is untouched. Between-steps injection stays out (stretch).
+- **Review fold-ins shipped:** operator-endpoint auth (above) + an opt-in webhook replay
+  window (`X-Quellgeist-Timestamp` freshness folded into the HMAC, `QG_WEBHOOK_MAX_SKEW_S`).
+- **Known limit (honest):** snapshot disk-bounding is complete for `failed`; `pending_review`
+  snapshots persist for review/steer and are reaped when Wave 9 adds `posted`/`rejected` reaping.
+
+**Next:** Wave 9 = resolution-verification (`verify_resolution`, sandbox) + Dockerfile/compose;
+Track B (DR-0024–0026) unchanged. Verify the combined v1+v2 launch decision at the boundary.
 
 ## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 
