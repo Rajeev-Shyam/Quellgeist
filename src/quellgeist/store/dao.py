@@ -57,6 +57,40 @@ def set_incident_status(
         )
 
 
+def delete_incident(conn: sqlite3.Connection, incident_id: str) -> None:
+    """Roll back a just-claimed incident (and its events) so its id is free to re-claim.
+    Used only on the ingress rollback paths (snapshot failure / queue-full load shed),
+    before any run exists — hence only ``events`` + ``incidents`` need clearing."""
+    with conn:
+        conn.execute("DELETE FROM events WHERE incident_id = ?", (incident_id,))
+        conn.execute("DELETE FROM incidents WHERE id = ?", (incident_id,))
+
+
+def incidents_by_status(
+    conn: sqlite3.Connection, statuses: tuple[str, ...]
+) -> list[Incident]:
+    """Incidents currently in any of ``statuses`` (used by startup recovery to re-enqueue
+    work stranded in the in-memory queue by a restart/crash), oldest first."""
+    if not statuses:
+        return []
+    placeholders = ",".join("?" for _ in statuses)
+    rows = conn.execute(
+        f"SELECT * FROM incidents WHERE status IN ({placeholders}) ORDER BY received_ts",
+        statuses,
+    ).fetchall()
+    return [
+        Incident(
+            id=r["id"],
+            source=r["source"],
+            received_ts=r["received_ts"],
+            signals_ref=r["signals_ref"],
+            status=r["status"],
+            hint=r["hint"],
+        )
+        for r in rows
+    ]
+
+
 # --- runs -----------------------------------------------------------------------
 
 

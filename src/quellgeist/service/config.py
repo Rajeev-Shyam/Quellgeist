@@ -30,6 +30,18 @@ class ServiceConfig:
     # test seam: inject a scripted provider; None => a real LiteLLM provider
     provider_factory: Callable[[], Provider] | None = None
 
+    def __post_init__(self) -> None:
+        # Fail fast on misconfiguration rather than starting a subtly-broken service:
+        # num_workers<=0 -> a "healthy" pool that processes nothing; queue_maxsize<=0 ->
+        # an asyncio.Queue that is silently UNBOUNDED (no backpressure); max_body_bytes<=0
+        # -> every request rejected. Clear error at construction beats a silent runtime hole.
+        if self.num_workers < 1:
+            raise ValueError(f"num_workers must be >= 1, got {self.num_workers}")
+        if self.queue_maxsize < 1:
+            raise ValueError(f"queue_maxsize must be >= 1, got {self.queue_maxsize}")
+        if self.max_body_bytes < 1:
+            raise ValueError(f"max_body_bytes must be >= 1, got {self.max_body_bytes}")
+
     def make_provider(self) -> Provider:
         if self.provider_factory is not None:
             return self.provider_factory()

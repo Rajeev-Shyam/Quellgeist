@@ -53,3 +53,12 @@ def snapshot_signals(
         shutil.rmtree(tmp, ignore_errors=True)
         raise
     return dest, copied
+
+
+def discard_snapshot(dest_dir: str | Path) -> None:
+    """Remove a per-incident snapshot dir once it is no longer needed. Called for
+    TERMINAL incidents (a 'failed' run here; Wave 8 adds 'posted'/'rejected'). A
+    'pending_review' incident KEEPS its snapshot — the review gate / steer re-run reads
+    it — so the dir is not reaped until the incident actually closes. Best-effort:
+    a cleanup failure must never crash the caller."""
+    shutil.rmtree(Path(dest_dir), ignore_errors=True)

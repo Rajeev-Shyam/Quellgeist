@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+
+import pytest
 
 from quellgeist import store
 from quellgeist.store import dao
@@ -107,5 +110,75 @@ def test_get_incident_missing_returns_none(tmp_path):
     conn = store.connect(db)
     try:
         assert dao.get_incident(conn, "nope") is None
+    finally:
+        conn.close()
+
+
+# --- hardening (migration atomicity + rollback/recovery DAOs) ---------------------
+
+
+def test_migration_rolls_back_wholesale_on_failure(tmp_path, monkeypatch):
+    # #3/#8: a mid-migration failure rolls back the WHOLE migration — no partial,
+    # unrecorded schema left to brick the next startup. The 1st statement's table must be
+    # gone once the 2nd statement (deliberate syntax error) fails.
+    from quellgeist.store import db
+
+    migdir = tmp_path / "migs"
+    migdir.mkdir()
+    (migdir / "001_bad.sql").write_text(
+        "CREATE TABLE good (a);\nCREATE TABLE bad (a));\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(db, "_MIGRATIONS_DIR", migdir)
+    conn = db.connect(str(tmp_path / "q.db"))
+    try:
+        with pytest.raises(sqlite3.OperationalError):
+            db.apply_migrations(conn)
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "good" not in tables and "bad" not in tables  # fully rolled back
+    finally:
+        conn.close()
+
+
+def test_migration_survives_reopen(tmp_path):
+    # #3: a second init_db (a restart / second starter) is a clean no-op, never a
+    # "table already exists" crash.
+    db = tmp_path / "q.db"
+    store.init_db(db)
+    store.init_db(db)  # must not raise
+    conn = store.connect(db)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
+    finally:
+        conn.close()
+
+
+def test_delete_incident_frees_id_and_clears_events(tmp_path):
+    db = tmp_path / "q.db"
+    store.init_db(db)
+    conn = store.connect(db)
+    try:
+        dao.create_incident(conn, _incident("del-1"))
+        dao.append_event(conn, "del-1", "received")
+        dao.delete_incident(conn, "del-1")
+        assert dao.get_incident(conn, "del-1") is None
+        assert dao.list_events(conn, "del-1") == []
+    finally:
+        conn.close()
+
+
+def test_incidents_by_status(tmp_path):
+    db = tmp_path / "q.db"
+    store.init_db(db)
+    conn = store.connect(db)
+    try:
+        dao.create_incident(conn, _incident("q-1", status="queued"))
+        dao.create_incident(conn, _incident("r-1", status="running"))
+        dao.create_incident(conn, _incident("p-1", status="pending_review"))
+        ids = {i.id for i in dao.incidents_by_status(conn, ("queued", "running"))}
+        assert ids == {"q-1", "r-1"}
+        assert dao.incidents_by_status(conn, ()) == []  # empty statuses -> empty
     finally:
         conn.close()

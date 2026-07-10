@@ -38,7 +38,7 @@ from quellgeist.observability import configure_logging, get_logger
 from quellgeist.service.config import ServiceConfig
 from quellgeist.service.queue import WorkerPool
 from quellgeist.service.security import verify_signature
-from quellgeist.service.snapshots import snapshot_signals
+from quellgeist.service.snapshots import discard_snapshot, snapshot_signals
 from quellgeist.store import dao
 from quellgeist.store.models import Incident
 
@@ -85,15 +85,16 @@ def _ingest_incident(
                 deploy_path=config.deploy_path,
                 metrics_path=config.metrics_path,
             )
-        except OSError as e:  # snapshot failed -> terminal, don't enqueue a doomed run
-            dao.append_event(
-                conn,
-                incident_id,
-                "failed",
-                detail_json=json.dumps({"error": f"snapshot failed: {e}"}),
+        except OSError:  # snapshot failed -> treat as TRANSIENT and roll back the claim
+            # so a retry can re-attempt, rather than permanently failing the incident
+            # behind the idempotency short-circuit (a later duplicate delivery would
+            # otherwise get 200 'failed' and never re-snapshot).
+            dao.delete_incident(conn, incident_id)  # frees the id to re-claim
+            return (
+                503,
+                {"incident_id": incident_id, "detail": "snapshot failed, retry later"},
+                False,
             )
-            dao.set_incident_status(conn, incident_id, "failed")
-            return 500, {"incident_id": incident_id, "status": "failed"}, False
 
         dao.append_event(
             conn,
@@ -141,16 +142,106 @@ def _incident_status(config: ServiceConfig, incident_id: str) -> dict | None:
         conn.close()
 
 
+async def _read_capped_body(request: Request, cap: int) -> bytes:
+    """Read the request body, aborting with 413 as SOON as it exceeds ``cap``. Enforcing
+    the bound while streaming (not via ``await request.body()`` + a post-hoc ``len``)
+    bounds memory even when Content-Length is absent or lied about (chunked transfer),
+    closing the unauthenticated-OOM hole — the cap is checked before any HMAC work."""
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > cap:
+            raise HTTPException(status_code=413, detail="request body too large")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _rollback_ingest(config: ServiceConfig, incident_id: str) -> None:
+    """Undo a claimed-but-unqueued incident (queue-full load shed): free the id and drop
+    its snapshot so a client retry can cleanly re-claim and re-enqueue."""
+    conn = store.connect(config.db_path)
+    try:
+        dao.delete_incident(conn, incident_id)
+    finally:
+        conn.close()
+    discard_snapshot(Path(config.signals_dir) / incident_id)
+
+
+async def _recover_pending(config: ServiceConfig, pool: WorkerPool) -> int:
+    """Re-enqueue incidents stranded by a restart/crash (status queued/running) — the
+    in-memory queue does not survive a restart, but the persisted incident + its frozen
+    snapshot do, and the run is re-derivable. Idempotent; returns the count re-enqueued.
+    """
+
+    def _fetch() -> list[str]:
+        conn = store.connect(config.db_path)
+        try:
+            to_enqueue: list[str] = []
+            for inc in dao.incidents_by_status(conn, ("queued", "running")):
+                completed = any(
+                    r.outcome in ("diagnosed", "abstained")
+                    for r in dao.list_runs(conn, inc.id)
+                )
+                if completed:
+                    # The run finished but the terminal 'pending_review' write was lost
+                    # before the crash: reconcile the status, do NOT re-run (a re-run
+                    # would persist a duplicate run for the same incident).
+                    dao.set_incident_status(conn, inc.id, "pending_review")
+                else:
+                    to_enqueue.append(inc.id)
+            return to_enqueue
+        finally:
+            conn.close()
+
+    recovered = 0
+    for incident_id in await asyncio.to_thread(_fetch):
+        try:
+            await pool.enqueue(incident_id)
+            recovered += 1
+        except asyncio.QueueFull:
+            break  # queue saturated; the remainder recover on a later startup
+    return recovered
+
+
 def create_app(config: ServiceConfig) -> FastAPI:
     log = get_logger()
     pool = WorkerPool(config)
+
+    # Per-incident-id serialization: a concurrent duplicate delivery must not observe a
+    # transiently-claimed row that a rollback (queue-full / snapshot-fail) then deletes —
+    # that would hand the duplicate a 200 'queued' for an incident which is then dropped.
+    # Ref-counted so entries never leak (removed when the last holder releases).
+    id_locks: dict[str, asyncio.Lock] = {}
+    id_lock_refs: dict[str, int] = {}
+
+    @asynccontextmanager
+    async def _incident_lock(incident_id: str):
+        lock = id_locks.get(incident_id)
+        if lock is None:
+            lock = id_locks[incident_id] = asyncio.Lock()
+        id_lock_refs[incident_id] = id_lock_refs.get(incident_id, 0) + 1
+        try:
+            async with lock:
+                yield
+        finally:
+            id_lock_refs[incident_id] -= 1
+            if id_lock_refs[incident_id] == 0:
+                id_locks.pop(incident_id, None)
+                id_lock_refs.pop(incident_id, None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         configure_logging()
         store.init_db(config.db_path)
         await pool.start()
-        log.info("service_started", workers=config.num_workers, db=config.db_path)
+        recovered = await _recover_pending(config, pool)
+        log.info(
+            "service_started",
+            workers=config.num_workers,
+            db=config.db_path,
+            recovered=recovered,
+        )
         try:
             yield
         finally:
@@ -169,11 +260,7 @@ def create_app(config: ServiceConfig) -> FastAPI:
         cl = request.headers.get("content-length")
         if cl is not None and cl.isdigit() and int(cl) > config.max_body_bytes:
             raise HTTPException(status_code=413, detail="request body too large")
-        body = await request.body()
-        if (
-            len(body) > config.max_body_bytes
-        ):  # backstop if content-length was absent/lied
-            raise HTTPException(status_code=413, detail="request body too large")
+        body = await _read_capped_body(request, config.max_body_bytes)
         if not verify_signature(
             config.webhook_secret, body, request.headers.get(_SIG_HEADER)
         ):
@@ -194,12 +281,24 @@ def create_app(config: ServiceConfig) -> FastAPI:
         if hint is not None and not isinstance(hint, str):
             raise HTTPException(status_code=400, detail="hint must be a string")
 
-        status_code, out, should_enqueue = await asyncio.to_thread(
-            _ingest_incident, config, incident_id, hint
-        )
-        if should_enqueue:
-            await pool.enqueue(incident_id)
-            log.info("incident_received", incident=incident_id)
+        # Hold the per-id lock across claim -> enqueue/rollback so a concurrent duplicate
+        # cannot see a row that is about to be rolled back.
+        async with _incident_lock(incident_id):
+            status_code, out, should_enqueue = await asyncio.to_thread(
+                _ingest_incident, config, incident_id, hint
+            )
+            if should_enqueue:
+                try:
+                    await pool.enqueue(incident_id)
+                except asyncio.QueueFull:
+                    # Shed load cleanly: roll back the claim so a retry can re-enqueue,
+                    # and tell the client to retry — never leave an incident orphaned.
+                    await asyncio.to_thread(_rollback_ingest, config, incident_id)
+                    log.warning("incident_shed_queue_full", incident=incident_id)
+                    raise HTTPException(
+                        status_code=503, detail="server busy, retry later"
+                    ) from None
+                log.info("incident_received", incident=incident_id)
         return JSONResponse(out, status_code=status_code)
 
     @app.get("/incidents/{incident_id}")
