@@ -27,7 +27,6 @@ class WorkerPool:
 
     async def start(self) -> None:
         self.queue = asyncio.Queue(maxsize=self.config.queue_maxsize)
-        self.queue = asyncio.Queue()
         self._workers = [
             asyncio.create_task(self._worker(i)) for i in range(self.config.num_workers)
         ]
@@ -43,7 +42,6 @@ class WorkerPool:
                 await asyncio.wait_for(self.queue.join(), timeout=drain_timeout)
             except TimeoutError:
                 _log.warning("worker_stop_drain_timeout", pending=self.queue.qsize())
-    async def stop(self) -> None:
         for w in self._workers:
             w.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)

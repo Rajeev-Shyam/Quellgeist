@@ -455,8 +455,6 @@ config precedence, usage captured on failed runs, `_now` de-duplicated, lazy `ap
   still user-gated).
 
 T8 (notify + review gate) opens next with DR-0027 (fold in T8.0).
-citation is persisted, not posted). 254 → 274 tests; ruff+black+bandit green; frozen diff
-empty; live uvicorn boot verified. T8 (notify + review gate) opens next with DR-0027.
 
 ## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 

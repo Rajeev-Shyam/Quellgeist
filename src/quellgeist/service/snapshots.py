@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 import shutil
 import uuid
-import shutil
 from pathlib import Path
 
 from quellgeist.orchestrator.tools_factory import (
@@ -54,16 +53,3 @@ def snapshot_signals(
         shutil.rmtree(tmp, ignore_errors=True)
         raise
     return dest, copied
-) -> Path:
-    """Copy whichever of the three source signal files exist into ``dest_dir`` under
-    the canonical names. Returns the snapshot directory (created if needed)."""
-    dest = Path(dest_dir)
-    dest.mkdir(parents=True, exist_ok=True)
-    for src, name in (
-        (log_path, SNAPSHOT_LOG),
-        (deploy_path, SNAPSHOT_DEPLOY),
-        (metrics_path, SNAPSHOT_METRICS),
-    ):
-        if src and Path(src).exists():
-            shutil.copyfile(src, dest / name)
-    return dest

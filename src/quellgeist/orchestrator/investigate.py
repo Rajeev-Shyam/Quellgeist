@@ -17,18 +17,12 @@ wired here — the live path is *fabrication-checked only*. Wiring the verifier 
 diagnosis is auto-posted is a Wave-8 prerequisite (T8.0); until then the live reliability
 is the model's *intrinsic* behaviour, not the verifier-backed system number. Wave 8 adds
 the review gate + hint injection and Wave 9 adds ``verify_resolution``.
-``pending_review`` for the Wave-8 gate. Provider failures degrade to a persisted
-``failed`` run, never a crashed worker.
-
-Wave 8 adds the review gate + hint injection and Wave 9 adds ``verify_resolution``; both
-wrap this same call. ``hint`` is accepted and stored now, injected in Wave 8.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 
 from quellgeist.agent.citations import check_fabrication
@@ -46,7 +40,6 @@ from quellgeist.orchestrator.tools_factory import incident_tools, read_signals
 from quellgeist.store import connect, dao
 from quellgeist.store.models import RunRecord
 
-_TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
 _log = get_logger()
 
 
@@ -55,10 +48,6 @@ class InvestigationResult:
     run: RunRecord
     diagnosis: Diagnosis
     fabricated: list[tuple[str, object]]  # empty = clean
-
-
-def _now() -> str:
-    return datetime.now(UTC).strftime(_TS_FMT)
 
 
 def _trace_json(result: LoopResult) -> str:
@@ -142,9 +131,6 @@ def investigate(
     now = now or started
     conn = connect(db_path)
     diagnosis: Diagnosis | None = None
-    started = _now()
-    now = now or started
-    conn = connect(db_path)
     try:
         with run_context(incident_id, run_id):
             _log.info(
@@ -165,12 +151,6 @@ def investigate(
                 )
                 usage = summarize_usage(provider)
                 outcome = "abstained" if diagnosis.abstained else "diagnosed"
-            except (
-                Exception
-            ) as exc:  # provider down / unexpected -> failed, not a crash
-                _log.warning(
-                    "investigation_failed", incident=incident_id, error=str(exc)
-                )
                 run = RunRecord(
                     id=run_id,
                     incident_id=incident_id,
@@ -241,81 +221,5 @@ def investigate(
                     abstained=True, abstention_reason=f"investigation failed: {exc}"
                 )
                 return InvestigationResult(run, fallback, [])
-                    ended_ts=_now(),
-                    outcome="failed",
-                    trace_json=json.dumps({"error": str(exc)}),
-                )
-                dao.record_run(conn, run)
-                dao.append_event(
-                    conn,
-                    incident_id,
-                    "failed",
-                    run_id=run_id,
-                    detail_json=json.dumps({"error": str(exc)}),
-                )
-                dao.set_incident_status(conn, incident_id, "failed")
-                return InvestigationResult(
-                    run, Diagnosis(abstained=True, abstention_reason=str(exc)), []
-                )
-
-            diagnosis = result.diagnosis
-            logs, commits, metrics = read_signals(snapshot_dir)
-            fabricated = sorted(
-                check_fabrication(diagnosis, logs, commits, metrics).fabricated,
-                key=repr,
-            )
-            usage = summarize_usage(provider)
-            outcome = "abstained" if diagnosis.abstained else "diagnosed"
-
-            run = RunRecord(
-                id=run_id,
-                incident_id=incident_id,
-                model=model,
-                started_ts=started,
-                ended_ts=_now(),
-                steps=result.steps,
-                outcome=outcome,
-                abstained=diagnosis.abstained,
-                fabricated=(
-                    json.dumps([list(h) for h in fabricated]) if fabricated else ""
-                ),
-                prompt_tokens=usage.prompt_tokens,
-                completion_tokens=usage.completion_tokens,
-                latency_s=usage.latency_s,
-                trace_json=_trace_json(result),
-            )
-            dao.record_run(conn, run)
-            dao.record_diagnosis(
-                conn,
-                run_id,
-                summary=diagnosis.summary,
-                diagnosis_json=diagnosis.model_dump_json(),
-            )
-            dao.record_evidence(
-                conn,
-                run_id,
-                [
-                    (i, ref.type, ref.ref_id)
-                    for i, h in enumerate(diagnosis.hypotheses)
-                    for ref in h.evidence
-                ],
-            )
-            dao.append_event(
-                conn,
-                incident_id,
-                outcome,
-                run_id=run_id,
-                detail_json=json.dumps({"fabricated": [list(h) for h in fabricated]}),
-            )
-            dao.set_incident_status(conn, incident_id, "pending_review")
-            _log.info(
-                "investigation_done",
-                incident=incident_id,
-                outcome=outcome,
-                steps=result.steps,
-                fabricated=len(fabricated),
-                prompt_tokens=usage.prompt_tokens,
-            )
-            return InvestigationResult(run, diagnosis, fabricated)
     finally:
         conn.close()
