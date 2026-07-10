@@ -138,8 +138,11 @@ def investigate(
                 incident=incident_id,
                 snapshot=str(snapshot_dir),
             )
-            dao.set_incident_status(conn, incident_id, "running")
             try:
+                # INSIDE the guarded try: a failure on this first write (e.g. a locked
+                # DB) must also degrade to a persisted 'failed' run, never leave the
+                # incident silently stuck at 'queued'/'running' with no run and no event.
+                dao.set_incident_status(conn, incident_id, "running")
                 result = run_loop(
                     provider, incident_tools(snapshot_dir), now=now, max_steps=max_steps
                 )

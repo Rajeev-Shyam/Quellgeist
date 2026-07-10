@@ -33,33 +33,64 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     return conn
 
 
-def _applied_versions(conn: sqlite3.Connection) -> set[str]:
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS schema_migrations "
-        "(version TEXT PRIMARY KEY, applied_ts TEXT NOT NULL)"
+def _statements(script: str) -> list[str]:
+    """Split a migration ``.sql`` into individual statements. Line comments (``-- ...``)
+    are stripped and the script is split on ``;``. Migrations must therefore be simple
+    DDL/DML with no semicolons inside string literals or triggers — sufficient for this
+    store's forward-only schema, and it lets us run each statement under our OWN explicit
+    transaction (``executescript`` force-commits, which is exactly the atomicity hole).
+    """
+    no_comments = "\n".join(
+        line for line in script.splitlines() if not line.lstrip().startswith("--")
     )
-    return {r["version"] for r in conn.execute("SELECT version FROM schema_migrations")}
+    return [s.strip() for s in no_comments.split(";") if s.strip()]
 
 
 def apply_migrations(conn: sqlite3.Connection) -> list[str]:
-    """Apply every ``migrations/NNN_*.sql`` not yet recorded, in numeric order, each in
-    its own transaction. Returns the versions applied this call (empty on a no-op)."""
+    """Apply every ``migrations/NNN_*.sql`` not yet recorded, in numeric order.
+
+    The whole check-then-apply runs inside a single ``BEGIN IMMEDIATE`` transaction, so:
+    (1) it is **serialized** across processes — a second starter blocks on the write lock,
+    then sees the versions already applied and no-ops (no "table already exists" crash);
+    (2) each migration's DDL and its ``schema_migrations`` row commit **atomically** — a
+    crash mid-apply rolls the whole thing back rather than leaving a partial, unrecorded
+    schema that bricks the next startup. Returns the versions applied this call."""
     from datetime import UTC, datetime
 
-    done = _applied_versions(conn)
-    applied: list[str] = []
-    for sql_file in sorted(_MIGRATIONS_DIR.glob("*.sql")):
-        version = sql_file.name.split("_", 1)[0]
-        if version in done:
-            continue
-        with conn:  # transaction: all-or-nothing per migration
-            conn.executescript(sql_file.read_text(encoding="utf-8"))
+    prev_isolation = conn.isolation_level
+    conn.isolation_level = None  # take manual control of BEGIN/COMMIT/ROLLBACK
+    try:
+        conn.execute("BEGIN IMMEDIATE")  # acquire the write lock up front
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations "
+            "(version TEXT PRIMARY KEY, applied_ts TEXT NOT NULL)"
+        )
+        done = {
+            r["version"] for r in conn.execute("SELECT version FROM schema_migrations")
+        }
+        applied: list[str] = []
+        for sql_file in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+            version = sql_file.name.split("_", 1)[0]
+            if version in done:
+                continue
+            for stmt in _statements(sql_file.read_text(encoding="utf-8")):
+                conn.execute(stmt)
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_ts) VALUES (?, ?)",
                 (version, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")),
             )
-        applied.append(version)
-    return applied
+            applied.append(version)
+        conn.execute("COMMIT")
+        return applied
+    except BaseException:
+        # Only roll back if a transaction is actually open. If BEGIN IMMEDIATE itself
+        # failed (write-lock contention — the serialized-starter case), no transaction
+        # exists and an unconditional ROLLBACK would raise, masking the real error.
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.isolation_level = prev_isolation
 
 
 def init_db(db_path: str | Path) -> None:
