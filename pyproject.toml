@@ -20,7 +20,7 @@ classifiers = [
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "mcp==1.28.0",
+    "mcp==1.28.1",
     "litellm",
     "pydantic>=2",
     "prometheus-client",
