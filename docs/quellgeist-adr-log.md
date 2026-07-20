@@ -706,9 +706,52 @@ fine-tune must still report the frozen number for comparability.
 
 ## Deferred DRs (opened at their wave start)
 
-- **DR-0024 — Timing-aware verifier design** (the culprit-after-errors detector; probe set).
-- **DR-0025 — Structure-varied corpus + public-postmortem out-of-structure holdout** (skeleton
-  parameters; curation/attribution/copyright rules; measurement discipline vs the frozen holdout).
+- **DR-0024 — Timing-aware verifier — DECIDED & BUILT (Wave 10, T10.1).** The
+  culprit-shifted-*after*-the-errors class (DR-0023 decision 7) the model-driven support
+  verifier can be talked into confirming.
+  1. **Deterministic + keyless — supersedes the "separately-pinned model" candidate.** The
+     deferred note framed this as a verifier *model* variant pinned off `QG_MODEL` (DR-0016
+     discipline). Folding in the Wave-9 learning (DR-0028: causal ordering is a signal question,
+     not a reasoning one), it is instead a **timestamp comparison** in
+     `agent/timing_verifier.py`: a cause cannot post-date its effect, so a hypothesis whose
+     EVERY cited-and-resolvable commit is strictly after the incident's first error is dropped;
+     none surviving → forced abstention. No model → nothing to pin and nothing to self-verify
+     (a strict *improvement* on DR-0016, not a relaxation).
+  2. **Additive + opt-in — the frozen comparison is byte-unchanged.** Runs only under
+     `QG_TIMING_VERIFY=1` (or explicit `timing_verify=True`), BEFORE the support pass in
+     `run_scenario`. Default off, so the fine-tune's `0/16 → 12/16` frozen-holdout number is
+     untouched; a future run reports both (with/without), never silently swaps it. The frozen
+     surface guard stays green (no schema/loop/tool-string change).
+  3. **Conservative in its own direction.** Drops ONLY on a *provable* ordering violation
+     (commit resolvable, both timestamps parseable, strictly after the first error). A cited
+     commit that predates/ties, an unresolvable sha (the fabrication check's job), an undated
+     error, or a commitless/log-only hypothesis all yield no objection.
+  4. **New keyless probe + measured acceptance.** `evals/training/timing_probes.py` derives the
+     culprit-after-errors probes from the `time_shift` recipe (probe split, nothing reinvented);
+     the timing verifier forces abstention on **100%** of them deterministically
+     (`tests/agent/test_timing_verifier.py`), the keyless T10.1 acceptance. **Not done this
+     session (documented next step):** wiring the pass into the live `investigate` path as a
+     fail-closed pre-filter — left for the boundary review to avoid unscoped live-path change.
+- **DR-0025 — Structure-varied corpus + out-of-structure holdout — SCAFFOLDED (Wave 10, T10.2).**
+  The generalisation track (DR-0023 decision 8): the frozen corpora are out-of-vocabulary but
+  share one skeleton, so a positional script passes without a policy (DR-0020). This session
+  lands the **scaffold + guards** — not the curated corpus or a fine-tune number (both need a
+  GPU/curation session).
+  1. **New sibling dir; frozen dirs untouched.** `evals/scenarios/oos/` holds the OOS holdout;
+     `fixtures/` (65) and `holdout/` (16) stay byte-locked (frozen guard green). A real OOS run
+     is `QG_SCENARIOS_DIR=evals/scenarios/oos`.
+  2. **Curation/attribution/copyright rules fixed in advance** (`oos/README.md`): curated from
+     public postmortems, **structure/shape only, paraphrased never verbatim**, each scenario
+     carrying `oos_meta` (source, source_url, curation, `verbatim:false`, skeleton_breaks,
+     attribution); real scenarios normalised through the existing ingest layer.
+  3. **Disjointness + out-of-structure are guarded, not just asserted.**
+     `tests/evals/test_oos_scaffold.py` proves no id collision / no byte-equal with the frozen
+     corpora, that each scenario breaks the frozen skeleton (commit-count ≠ 2 / culprit-not-newest
+     / multi-route), and that attribution + `verbatim:false` are present.
+  4. **Measurement discipline.** Any fine-tune reports the **frozen** holdout number (for
+     `0/16→12/16` comparability) AND the OOS number (for generalisation) — never one instead of
+     the other. Two clearly-labelled `SYNTHETIC-SCAFFOLD` seeds exercise the frame; they are
+     placeholders, replaced by curated real postmortems (attribution required) in a GPU session.
 - **DR-0026 — `resource_exhaustion` trajectory-mix** (targeted training data; optional).
 - **DR-0027 — HITL protocol + resumable orchestration — DECIDED & SHIPPED (Wave 8).**
   1. **Verifier is load-bearing in the live path.** `investigate()` runs the base verifier
@@ -772,4 +815,5 @@ fine-tune must still report the frozen number for comparability.
      bypasses the worker reap); compose overrides the demo's healthcheck to `/health`; SECURITY.md
      "only mutations" corrected to include the authenticated `resolution` audit event; and
      stronger tests for each. One finding (a weak endpoint `since` test) was refuted and left.
-- **DR-0024–0026** remain deferred (Track B; open at their wave start).
+- **DR-0026** remains deferred (Track B, optional; opens at its wave start). DR-0024 (built) and
+  DR-0025 (scaffolded) were opened at the Wave 10 kickoff above.

@@ -31,6 +31,7 @@ from quellgeist.agent.providers import (
     is_auth_error,
     is_provider_unavailable,
 )
+from quellgeist.agent.timing_verifier import verify_timing
 from quellgeist.agent.verifier import (
     VerifierResult,
     default_verifier_provider,
@@ -77,6 +78,7 @@ class EvalResult:
     loop: LoopResult
     fabrication: FabricationResult
     verifier: VerifierResult | None = None  # set when the verifier pass ran
+    timing: VerifierResult | None = None  # set when the timing-aware pass ran (T10.1)
     rubric: RubricVerdict | None = None  # set when the LLM-judge ran (advisory)
 
     @property
@@ -96,12 +98,22 @@ def run_scenario(
     *,
     verifier_provider: Provider | None = None,
     judge_provider: Provider | None = None,
+    timing_verify: bool = False,
     max_steps: int = 8,
 ) -> EvalResult:
     loop = run_loop(
         provider, scenario_tools(scenario), now=scenario.now, max_steps=max_steps
     )
     diagnosis = loop.diagnosis
+
+    # Optional DETERMINISTIC timing-aware pass (T10.1, DR-0024): drop hypotheses
+    # whose every cited commit post-dates the first error, BEFORE the model support
+    # pass. Keyless and opt-in, so the frozen 0/16->12/16 comparison path is
+    # byte-unchanged when off; on, its (reduced) diagnosis feeds the support pass.
+    timing_result: VerifierResult | None = None
+    if timing_verify:
+        timing_result = verify_timing(diagnosis, scenario.logs, scenario.commits)
+        diagnosis = timing_result.diagnosis
 
     # Optional verifier pass: confirm cited evidence supports each hypothesis and
     # force abstention otherwise. The VERIFIED diagnosis is what gets scored.
@@ -127,6 +139,7 @@ def run_scenario(
         loop,
         check_fabrication(diagnosis, scenario.logs, scenario.commits, scenario.metrics),
         verifier=verifier_result,
+        timing=timing_result,
         rubric=rubric,
     )
 
@@ -137,6 +150,7 @@ def run_all(
     *,
     verifier_provider: Provider | None = None,
     judge_provider: Provider | None = None,
+    timing_verify: bool = False,
 ) -> int:
     passed = fabricating = 0
     for s in scenarios:
@@ -145,10 +159,13 @@ def run_all(
             provider,
             verifier_provider=verifier_provider,
             judge_provider=judge_provider,
+            timing_verify=timing_verify,
         )
         mark = "PASS" if r.passed else "FAIL"
         fab = ", ".join(f"{t}:{k}" for t, k in sorted(r.fabrication.fabricated))
         extra = ""
+        if r.timing is not None:
+            extra += f", timing_dropped={len(r.timing.dropped)}"
         if r.verifier is not None:
             extra += f", verifier_dropped={len(r.verifier.dropped)}"
         if r.rubric is not None:
@@ -179,6 +196,7 @@ def main(
     *,
     verifier_provider: Provider | None = None,
     judge_provider: Provider | None = None,
+    timing_verify: bool | None = None,
 ) -> int:
     scenarios = _load_all_fixtures()
     if not scenarios:
@@ -191,12 +209,17 @@ def main(
         verifier_provider = default_verifier_provider()
     if judge_provider is None and os.environ.get("QG_JUDGE_LLM") == "1":
         judge_provider = default_judge_provider()
+    # The timing pass is KEYLESS and deterministic; opt-in via QG_TIMING_VERIFY so
+    # the frozen comparison path is untouched by default (T10.1, DR-0024).
+    if timing_verify is None:
+        timing_verify = os.environ.get("QG_TIMING_VERIFY") == "1"
     try:
         return run_all(
             scenarios,
             provider or LiteLLMProvider(),
             verifier_provider=verifier_provider,
             judge_provider=judge_provider,
+            timing_verify=timing_verify,
         )
     except Exception as exc:
         # An unreachable backend (free-tier quota / 503 / timeout) is a SKIP, not
