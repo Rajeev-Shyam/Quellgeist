@@ -1,0 +1,36 @@
+{
+  "id": "oos_synth_0001",
+  "failure_class": "bad_deploy",
+  "now": "2027-01-15T14:40:00Z",
+  "logs": [
+    {"id": 0, "ts": "2027-01-15T14:30:00Z", "level": "INFO", "route": "/checkout", "status": 200, "msg": "checkout ok"},
+    {"id": 1, "ts": "2027-01-15T14:31:00Z", "level": "INFO", "route": "/inventory", "status": 200, "msg": "inventory ok"},
+    {"id": 2, "ts": "2027-01-15T14:36:20Z", "level": "ERROR", "route": "/checkout", "status": 500, "msg": "KeyError: 'tax_rate' in pricing.compute_total"},
+    {"id": 3, "ts": "2027-01-15T14:36:45Z", "level": "ERROR", "route": "/inventory", "status": 500, "msg": "KeyError: 'tax_rate' in pricing.compute_total"},
+    {"id": 4, "ts": "2027-01-15T14:37:10Z", "level": "ERROR", "route": "/checkout", "status": 500, "msg": "KeyError: 'tax_rate' in pricing.compute_total"},
+    {"id": 5, "ts": "2027-01-15T14:38:00Z", "level": "INFO", "route": "/health", "status": 200, "msg": "health ok"}
+  ],
+  "commits": [
+    {"sha": "f0a1a00", "ts": "2027-01-15T14:20:00Z", "msg": "chore: bump pinned deps", "files": ["requirements.txt"]},
+    {"sha": "f0a2c11", "ts": "2027-01-15T14:34:05Z", "msg": "deploy: rework pricing.compute_total tax handling", "files": ["demo/app/pricing.py"]},
+    {"sha": "f0a3d22", "ts": "2027-01-15T14:38:30Z", "msg": "docs: update pricing runbook", "files": ["README.md"]},
+    {"sha": "f0a4e33", "ts": "2027-01-15T14:39:00Z", "msg": "test: add pricing coverage", "files": ["tests/test_pricing.py"]}
+  ],
+  "gold_cause": "deploy f0a2c11 reworked pricing.compute_total and dropped the tax_rate key, 500ing /checkout and /inventory",
+  "gold_evidence": [
+    "log 2: first KeyError on /checkout at 14:36:20",
+    "commit f0a2c11: the pricing.compute_total change that preceded the errors"
+  ],
+  "gold_evidence_refs": [
+    {"type": "log", "id": 2},
+    {"type": "commit", "sha": "f0a2c11"}
+  ],
+  "oos_meta": {
+    "source": "SYNTHETIC-SCAFFOLD",
+    "source_url": null,
+    "curation": "synthetic",
+    "verbatim": false,
+    "skeleton_breaks": ["commit_count", "culprit_not_newest", "multi_route"],
+    "attribution": "Synthetic placeholder authored for the OOS scaffold; not derived from any real writeup. Replace with a curated public postmortem (attribution required) before quoting an OOS number."
+  }
+}

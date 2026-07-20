@@ -1,0 +1,37 @@
+{
+  "id": "oos_synth_0002",
+  "failure_class": "config_error",
+  "now": "2027-02-03T09:15:00Z",
+  "logs": [
+    {"id": 0, "ts": "2027-02-03T09:00:00Z", "level": "INFO", "route": "/login", "status": 200, "msg": "login ok"},
+    {"id": 1, "ts": "2027-02-03T09:01:30Z", "level": "INFO", "route": "/login", "status": 200, "msg": "login ok"},
+    {"id": 2, "ts": "2027-02-03T09:02:10Z", "level": "INFO", "route": "/profile", "status": 200, "msg": "profile ok"},
+    {"id": 3, "ts": "2027-02-03T09:07:44Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "ConfigError: missing SESSION_TTL in auth.session"},
+    {"id": 4, "ts": "2027-02-03T09:08:02Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "ConfigError: missing SESSION_TTL in auth.session"},
+    {"id": 5, "ts": "2027-02-03T09:08:55Z", "level": "WARN", "route": "/login", "status": 500, "msg": "retry exhausted for session bootstrap"},
+    {"id": 6, "ts": "2027-02-03T09:09:31Z", "level": "ERROR", "route": "/login", "status": 500, "msg": "ConfigError: missing SESSION_TTL in auth.session"},
+    {"id": 7, "ts": "2027-02-03T09:12:00Z", "level": "INFO", "route": "/health", "status": 200, "msg": "health ok"}
+  ],
+  "commits": [
+    {"sha": "c0nf1g0", "ts": "2027-02-03T08:40:00Z", "msg": "feat: add /profile avatar cache", "files": ["demo/app/profile.py"]},
+    {"sha": "c0nf1g2", "ts": "2027-02-03T09:05:12Z", "msg": "config: trim unused keys from the auth env template", "files": ["deploy/auth.env"]},
+    {"sha": "c0nf1g9", "ts": "2027-02-03T09:11:00Z", "msg": "docs: note the auth env change", "files": ["README.md"]}
+  ],
+  "gold_cause": "config change c0nf1g2 removed SESSION_TTL from the auth env template, 500ing /login with ConfigError",
+  "gold_evidence": [
+    "log 3: first ConfigError on /login at 09:07:44",
+    "commit c0nf1g2: the auth.env change that dropped SESSION_TTL"
+  ],
+  "gold_evidence_refs": [
+    {"type": "log", "id": 3},
+    {"type": "commit", "sha": "c0nf1g2"}
+  ],
+  "oos_meta": {
+    "source": "SYNTHETIC-SCAFFOLD",
+    "source_url": null,
+    "curation": "synthetic",
+    "verbatim": false,
+    "skeleton_breaks": ["commit_count", "culprit_not_newest", "log_length"],
+    "attribution": "Synthetic placeholder authored for the OOS scaffold; not derived from any real writeup. Replace with a curated public postmortem (attribution required) before quoting an OOS number."
+  }
+}

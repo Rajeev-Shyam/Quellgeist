@@ -409,7 +409,7 @@ checklist runs at its close.
 | **7** | Service spine: `store` (SQLite WAL) + `observability` + `service` (signed webhook, healthz) + worker pool + isolated snapshots + run persistence + the frozen-surface guard | ✅ built — signed webhook → concurrent workers → persisted cited runs; incident-scoped tool closures for isolation; 254 → 274 tests; frozen diff empty |
 | 8 | Output + HITL: `notify` (Slack + HTML), review gate (approve/steer/reject), hint-at-trigger | ✅ shipped (DR-0027) — verifier in the live path, fail-closed notify, review gate, operator auth, webhook replay; 284 → 318 tests |
 | 9 | Resolution-verification (Wave-6 content, sandbox only) + Dockerfile + `compose.yml` + SECURITY.md | ✅ built (DR-0028) — deterministic keyless `verify_resolution`, complete snapshot reaping (`posted`/`rejected`), Docker/compose, SECURITY.md v2; 318 → 339 tests; frozen diff empty |
-| 10 | Track B (parallel): timing-aware verifier (DR-0024) + structure-varied/out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026) | ⏳ scoped |
+| 10 | Track B (parallel): timing-aware verifier (DR-0024) + structure-varied/out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026) | 🚧 in progress — **T10.1 built** (deterministic keyless `timing_verifier`, opt-in `QG_TIMING_VERIFY`, culprit-after-errors probe, 100% keyless abstention; frozen diff empty) + **T10.2 scaffolded** (`evals/scenarios/oos/` + curation/attribution rules + disjointness guards; frozen 65/16 untouched); 339 → 361 tests. Remaining: live-path wiring of the timing pass; curated OOS corpus + fine-tune numbers (GPU session); DR-0026 optional |
 
 **Setup landed (pre-Wave-7):** the three v2 docs (DR-0023, spec, brief), this plan
 section, `tests/frozen/test_frozen_surface.py` (the anti-drift guard — golden tool-string
@@ -567,6 +567,35 @@ left as-is (the endpoint code was verified correct). 335 → 339 tests.
 - **Next wave:** Wave 10 (Track B) — timing-aware verifier (DR-0024) + structure-varied /
   out-of-structure evals (DR-0025) + optional `resource_exhaustion` mix (DR-0026), re-scoped to
   task detail at kickoff. Never reopen training inside a ship wave.
+
+### Wave 10 kickoff (2026-07-20) — Track B, keyless slice
+
+Opened DR-0024 (built) and DR-0025 (scaffolded); DR-0026 stays optional/deferred. (The
+boundary review reserved DR-0024/0025 for this track — those are the ids opened here, not the
+placeholder DR-0029.) The full training numbers (T10.2 fine-tune, T10.3) need a GPU/curation
+session; this slice lands everything provable **keyless**, additive, with the frozen surface
+byte-locked.
+
+- **T10.1 — timing-aware verifier (BUILT).** `src/quellgeist/agent/timing_verifier.py`:
+  deterministic `verify_timing(diagnosis, logs, commits)` drops any hypothesis whose every
+  cited-and-resolvable commit post-dates the incident's first error (a cause cannot follow its
+  effect) → forced abstention. Reuses `verifier.VerifierResult`/`HypothesisVerdict`; no model
+  (supersedes the DR-0024 "pinned model" candidate — see the DR). Opt-in via `QG_TIMING_VERIFY`
+  / `run_scenario(timing_verify=True)`, wired ahead of the support pass; **off by default so the
+  frozen `0/16→12/16` comparison is byte-unchanged.** Probe: `evals/training/timing_probes.py`
+  derives the culprit-after-errors set from the existing `time_shift` recipe; the verifier
+  abstains on 100% keyless. Tests: `tests/agent/test_timing_verifier.py` (unit + corpus probe) +
+  two `tests/evals/test_runner.py` integration cases. *Acceptance met:* new abstention probes
+  pass keyless; the frozen-holdout reporting path is intact (opt-in). *Deferred:* wiring the pass
+  into the live `investigate` path as a fail-closed pre-filter (next boundary).
+- **T10.2 — out-of-structure holdout (SCAFFOLDED).** New sibling dir `evals/scenarios/oos/`
+  (frozen `fixtures`/`holdout` byte-locked, 65/16) + `README.md` fixing the
+  curation/attribution/copyright + measurement rules + two `SYNTHETIC-SCAFFOLD` seeds that break
+  the frozen skeleton. Guard: `tests/evals/test_oos_scaffold.py` proves disjointness from the
+  frozen corpora, out-of-structure-ness, and `verbatim:false` + attribution. *Deferred:* the
+  curated public-postmortem corpus + a fine-tune reporting **both** the frozen and OOS numbers
+  (GPU/curation session).
+- **Result:** 339 → 361 tests; deterministic keyless gate green; frozen-surface guard green.
 
 ## Wave 6 — Resolution-verification Loop *(pulled into v2 Wave 9; DR-0023 decision 6)*
 

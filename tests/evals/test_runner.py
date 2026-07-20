@@ -302,6 +302,37 @@ def test_verifier_pass_can_force_abstention_in_eval():
     assert not r.passed
 
 
+def test_timing_verify_forces_abstention_when_culprit_postdates_error():
+    # The reasoner emits the SAME correct-looking script (cites commit a1b2c3d),
+    # but on a scenario where a1b2c3d has been shifted to AFTER the first error.
+    # The deterministic timing pass drops it -> forced abstention -> scenario fails.
+    base = load_scenario(FIXTURE)
+    doc = base.model_dump()
+    first_err = min(r["ts"] for r in doc["logs"] if r["level"] == "ERROR")
+    doc["commits"] = [
+        {**c, "ts": "2026-06-18T10:30:00Z"} if c["sha"] == "a1b2c3d" else c
+        for c in doc["commits"]
+    ]
+    assert doc["commits"][0]["ts"] > first_err  # precondition: culprit now postdates
+    shifted = type(base)(**doc)
+
+    reasoner = FakeProvider(list(_CORRECT_SCRIPT))
+    r = run_scenario(shifted, reasoner, timing_verify=True)
+    assert r.timing is not None and r.timing.forced_abstention
+    assert r.timing.diagnosis.abstained
+    assert not r.passed
+
+
+def test_timing_verify_off_by_default_leaves_the_frozen_path_untouched():
+    # Same postdating scenario, timing OFF: run_scenario does NOT run the pass, so
+    # r.timing is None and the (correct-looking) diagnosis is scored as-is. This is
+    # what keeps the frozen 0/16->12/16 comparison byte-identical.
+    base = load_scenario(FIXTURE)
+    reasoner = FakeProvider(list(_CORRECT_SCRIPT))
+    r = run_scenario(base, reasoner)
+    assert r.timing is None
+
+
 def test_judge_provider_populates_advisory_rubric():
     # The LLM-judge rubric is recorded but does NOT change the deterministic gate.
     scenario = load_scenario(FIXTURE)
